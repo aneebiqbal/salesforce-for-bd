@@ -129,7 +129,10 @@ export const BDDashboard = () => {
                   <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} width={28} />
                   <Tooltip
                     contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: 'var(--radius)' }}
-                    formatter={(value: number) => [`${value} lead${value !== 1 ? 's' : ''}`, 'Count']}
+                    formatter={(value) => {
+                    const v = value ?? 0
+                    return [`${v} lead${v !== 1 ? 's' : ''}`, 'Count']
+                  }}
                   />
                   <Bar dataKey="count" fill="var(--chart-1)" radius={[4, 4, 0, 0]} />
                 </BarChart>

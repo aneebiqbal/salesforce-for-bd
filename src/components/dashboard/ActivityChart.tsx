@@ -62,7 +62,7 @@ export const ActivityChart = ({ data }: ActivityChartProps) => {
               padding: '10px 14px',
             }}
             labelFormatter={(_, payload) => payload?.[0]?.payload?.label ?? ''}
-            formatter={(value: number) => [`${value.toLocaleString()} actions`, 'Total actions']}
+            formatter={(value) => [`${(value ?? 0).toLocaleString()} actions`, 'Total actions']}
             labelStyle={{ color: 'var(--muted-foreground)', fontWeight: 500 }}
           />
           <Area

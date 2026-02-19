@@ -59,9 +59,10 @@ export const PipelineChart = ({ data }: PipelineChartProps) => {
               boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
               padding: '10px 14px',
             }}
-            formatter={(value: number, name, props) => {
-              const pct = total > 0 ? ((value / total) * 100).toFixed(0) : '0'
-              return [`${value} lead${value !== 1 ? 's' : ''} (${pct}%)`, props.payload.stage]
+            formatter={(value, _name, props) => {
+              const v = Number(value ?? 0)
+              const pct = total > 0 ? ((v / total) * 100).toFixed(0) : '0'
+              return [`${v} lead${v !== 1 ? 's' : ''} (${pct}%)`, props.payload.stage]
             }}
             cursor={{ fill: 'var(--muted)', fillOpacity: 0.15 }}
           />
