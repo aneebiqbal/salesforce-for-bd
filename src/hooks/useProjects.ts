@@ -23,6 +23,7 @@ export const useProjects = (leadId?: string | null) => {
       return (data ?? []) as Project[]
     },
     enabled: true,
+    staleTime: 2 * 60 * 1000,
   })
 
   const createMutation = useMutation({

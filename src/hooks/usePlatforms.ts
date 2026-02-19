@@ -17,6 +17,7 @@ export const usePlatforms = () => {
       return (data ?? []) as Platform[]
     },
     enabled: true,
+    staleTime: 5 * 60 * 1000,
   })
   return { platforms, isLoading }
 }

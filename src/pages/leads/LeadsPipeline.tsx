@@ -355,6 +355,10 @@ function LeadFormInner({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!client_name.trim()) return
+    if (!source_platform_id?.trim()) {
+      toast.error('Please select a source platform')
+      return
+    }
     setSaving(true)
     try {
       await onSubmit({

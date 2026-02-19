@@ -12,6 +12,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Users, Briefcase, ClipboardList, DollarSign } from 'lucide-react'
 import { useAdminStats } from '@/hooks/useAdminStats'
 import { useTodayTeamStatus } from '@/hooks/useTodayTeamStatus'
 import { useActivityTrend } from '@/hooks/useActivityTrend'
@@ -33,16 +34,17 @@ export const AdminDashboard = () => {
   const { data: recentActivities, isLoading: recentLoading } = useRecentActivities(10)
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Admin Dashboard</h1>
-        <p className="text-muted-foreground">Overview of BD team performance.</p>
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">Admin Dashboard</h1>
+        <p className="mt-1 text-muted-foreground">Team performance, pipeline, and activity overview.</p>
       </div>
 
-      {/* Task 8: Today's Team Status - first section */}
+      {/* Today's Team Status */}
       <Card>
         <CardHeader>
-          <CardTitle>Today&apos;s Team Status</CardTitle>
+          <CardTitle className="text-lg">Today&apos;s team status</CardTitle>
+          <p className="text-sm text-muted-foreground">Check-in and profile completion for each BD member.</p>
         </CardHeader>
         <CardContent>
           {teamStatusLoading ? (
@@ -76,8 +78,8 @@ export const AdminDashboard = () => {
         </CardContent>
       </Card>
 
-      {/* Row 1 - Stat Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {/* Stat Cards */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {statsLoading ? (
           Array.from({ length: 4 }).map((_, i) => (
             <Card key={i}>
@@ -91,23 +93,24 @@ export const AdminDashboard = () => {
           ))
         ) : (
           <>
-            <StatCard title="Total BD Members" value={stats?.bdMembersCount ?? '—'} description="bd_manager role" />
-            <StatCard title="Active Profiles" value={stats?.activeProfilesCount ?? '—'} description="Across platforms" />
-            <StatCard title="Leads This Month" value={stats?.leadsThisMonthCount ?? '—'} description="Created this month" />
-            <StatCard title="Total Revenue" value={stats?.totalRevenue != null ? formatCurrency(stats.totalRevenue) : '—'} description="Active + completed projects" />
+            <StatCard title="BD members" value={stats?.bdMembersCount ?? '—'} description="bd_manager role" icon={Users} />
+            <StatCard title="Active profiles" value={stats?.activeProfilesCount ?? '—'} description="Across platforms" icon={Briefcase} />
+            <StatCard title="Leads this month" value={stats?.leadsThisMonthCount ?? '—'} description="New leads" icon={ClipboardList} />
+            <StatCard title="Total revenue" value={stats?.totalRevenue != null ? formatCurrency(stats.totalRevenue) : '—'} description="Active + completed" icon={DollarSign} />
           </>
         )}
       </div>
 
-      {/* Row 2 - Charts */}
+      {/* Charts */}
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Daily Activity Trend (Last 7 Days)</CardTitle>
+            <CardTitle className="text-lg">Daily activity trend</CardTitle>
+            <p className="text-sm text-muted-foreground">Total actions (proposals, applies, emails) over the last 7 days.</p>
           </CardHeader>
           <CardContent>
             {trendLoading ? (
-              <Skeleton className="h-[200px] w-full" />
+              <Skeleton className="h-[240px] w-full" />
             ) : (
               <ActivityChart data={trendData} />
             )}
@@ -115,11 +118,12 @@ export const AdminDashboard = () => {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>Lead Pipeline</CardTitle>
+            <CardTitle className="text-lg">Lead pipeline</CardTitle>
+            <p className="text-sm text-muted-foreground">Number of leads in each stage. Won and lost are highlighted.</p>
           </CardHeader>
           <CardContent>
             {pipelineLoading ? (
-              <Skeleton className="h-[200px] w-full" />
+              <Skeleton className="h-[240px] w-full" />
             ) : (
               <PipelineChart data={pipelineData} />
             )}
@@ -127,11 +131,12 @@ export const AdminDashboard = () => {
         </Card>
       </div>
 
-      {/* Row 3 - BD Performance + Recent Activities */}
+      {/* BD Performance + Recent Activities */}
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>BD Performance (This Month)</CardTitle>
+            <CardTitle className="text-lg">BD performance</CardTitle>
+            <p className="text-sm text-muted-foreground">Actions and response rate by member (current period).</p>
           </CardHeader>
           <CardContent>
             {bdPerfLoading ? (
@@ -166,7 +171,8 @@ export const AdminDashboard = () => {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>Recent Activities</CardTitle>
+            <CardTitle className="text-lg">Recent activities</CardTitle>
+            <p className="text-sm text-muted-foreground">Latest daily log entries across the team.</p>
           </CardHeader>
           <CardContent>
             {recentLoading ? (

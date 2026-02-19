@@ -22,6 +22,7 @@ export const useProfiles = (bdMemberId?: string) => {
       return (data ?? []) as ProfileWithPlatform[]
     },
     enabled: true,
+    staleTime: 5 * 60 * 1000,
   })
 
   const createMutation = useMutation({

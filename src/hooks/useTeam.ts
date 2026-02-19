@@ -16,6 +16,7 @@ export const useTeamMembers = () => {
       return (data ?? []) as UserProfile[]
     },
     enabled: true,
+    staleTime: 2 * 60 * 1000,
   })
   return { members, isLoading }
 }

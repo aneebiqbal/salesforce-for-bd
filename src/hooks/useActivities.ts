@@ -49,6 +49,7 @@ export const useActivities = (bdMemberId?: string, start?: string, end?: string)
       return (data ?? []) as DailyActivity[]
     },
     enabled: true,
+    staleTime: 60 * 1000,
   })
 
   const createMutation = useMutation({

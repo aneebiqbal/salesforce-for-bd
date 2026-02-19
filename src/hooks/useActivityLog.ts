@@ -31,6 +31,7 @@ export const useActivityLog = (
 
   const { data, isLoading } = useQuery({
     queryKey: [...ACTIVITY_LOG_QUERY_KEY, bdMemberId, startDate, endDate, platformId, page],
+    staleTime: 60 * 1000,
     queryFn: async (): Promise<{ rows: ActivityLogRow[]; total: number }> => {
       let q = supabase
         .from('daily_activities')

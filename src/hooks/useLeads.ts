@@ -22,10 +22,12 @@ export const useLeads = (assignedTo?: string) => {
       return (data ?? []) as Lead[]
     },
     enabled: true,
+    staleTime: 2 * 60 * 1000,
   })
 
   const createMutation = useMutation({
     mutationFn: async (payload: LeadInsert) => {
+      if (!payload.source_platform_id) throw new Error('Source platform is required')
       const { data, error } = await supabase.from('leads').insert(payload).select().single()
       if (error) throw error
       return data as Lead

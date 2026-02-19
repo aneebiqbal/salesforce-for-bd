@@ -23,6 +23,7 @@ export const useTargets = (bdMemberId?: string) => {
       return (data ?? []) as Target[]
     },
     enabled: true,
+    staleTime: 2 * 60 * 1000,
   })
 
   const upsertMutation = useMutation({

@@ -34,7 +34,7 @@ export const ProjectsPage = () => {
   const [editingProject, setEditingProject] = useState<Project | null>(null)
 
   const { projects, isLoading, createProject, updateProject, deleteProject } = useProjects()
-  const { leads } = useLeads()
+  const { leads, isLoading: leadsLoading } = useLeads()
   const wonLeads = (leads ?? []).filter((l) => l.status === 'won')
 
   const handleSave = async (values: ProjectFormValues) => {
@@ -201,6 +201,7 @@ export const ProjectsPage = () => {
           <ProjectForm
             project={editingProject}
             wonLeads={wonLeads}
+            leadsLoading={leadsLoading}
             onSave={handleSave}
             onCancel={() => (setDialogOpen(false), setEditingProject(null))}
           />
@@ -225,11 +226,13 @@ type ProjectFormValues = {
 function ProjectForm({
   project,
   wonLeads,
+  leadsLoading,
   onSave,
   onCancel,
 }: {
   project: Project | null
   wonLeads: { id: string; client_name: string; company: string | null }[]
+  leadsLoading?: boolean
   onSave: (v: ProjectFormValues) => Promise<void>
   onCancel: () => void
 }) {
@@ -294,8 +297,8 @@ function ProjectForm({
       </div>
       <div className="space-y-2">
         <Label>Linked lead (won)</Label>
-        <Select value={lead_id || '__none__'} onValueChange={(v) => setLead_id(v === '__none__' ? '' : v)}>
-          <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
+        <Select value={lead_id || '__none__'} onValueChange={(v) => setLead_id(v === '__none__' ? '' : v)} disabled={leadsLoading}>
+          <SelectTrigger><SelectValue placeholder={leadsLoading ? 'Loading…' : 'None'} /></SelectTrigger>
           <SelectContent>
             <SelectItem value="__none__">None</SelectItem>
             {wonLeads.map((l) => (

@@ -6,15 +6,9 @@ import { z } from 'zod'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
 import { useAuthContext } from '@/providers/AuthProvider'
+import { AuthLayout } from '@/components/auth/AuthLayout'
+import { Loader2 } from 'lucide-react'
 
 const registerSchema = z
   .object({
@@ -59,85 +53,96 @@ export const Register = () => {
   }
 
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-background p-4">
-      <Card className="w-full min-w-0 max-w-sm shrink-0">
-        <CardHeader>
-          <CardTitle>Create account</CardTitle>
-          <CardDescription>Register for BD Salesforce.</CardDescription>
-        </CardHeader>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="flex min-w-0 flex-col">
-          <CardContent className="min-w-0 space-y-4">
-            {error && (
-              <p className="text-sm text-destructive" role="alert">
-                {error}
-              </p>
-            )}
-            <div className="space-y-2">
-              <Label htmlFor="fullName">Full name</Label>
-              <Input
-                id="fullName"
-                placeholder="Jane Doe"
-                autoComplete="name"
-                {...form.register('fullName')}
-              />
-              {form.formState.errors.fullName && (
-                <p className="text-xs text-destructive">{form.formState.errors.fullName.message}</p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="you@company.com"
-                autoComplete="email"
-                {...form.register('email')}
-              />
-              {form.formState.errors.email && (
-                <p className="text-xs text-destructive">{form.formState.errors.email.message}</p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                autoComplete="new-password"
-                {...form.register('password')}
-              />
-              {form.formState.errors.password && (
-                <p className="text-xs text-destructive">{form.formState.errors.password.message}</p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm password</Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                autoComplete="new-password"
-                {...form.register('confirmPassword')}
-              />
-              {form.formState.errors.confirmPassword && (
-                <p className="text-xs text-destructive">
-                  {form.formState.errors.confirmPassword.message}
-                </p>
-              )}
-            </div>
-          </CardContent>
-          <CardFooter className="flex min-w-0 shrink-0 flex-col gap-2">
-            <Button
-              type="submit"
-              className="min-h-9 w-full min-w-0 shrink-0"
-              disabled={submitting}
-            >
-              {submitting ? 'Creating account…' : 'Create account'}
-            </Button>
-            <Link to="/login" className="text-center text-sm text-muted-foreground underline">
-              Already have an account? Sign in
-            </Link>
-          </CardFooter>
-        </form>
-      </Card>
-    </div>
+    <AuthLayout
+      title="Create your account"
+      subtitle="Register with your details to get started."
+      footer={
+        <p className="text-sm text-muted-foreground">
+          Already have an account?{' '}
+          <Link to="/login" className="font-medium text-foreground underline underline-offset-4 hover:text-primary">
+            Sign in
+          </Link>
+        </p>
+      }
+    >
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+        {error && (
+          <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive" role="alert">
+            {error}
+          </div>
+        )}
+        <div className="space-y-2">
+          <Label htmlFor="fullName" className="text-foreground">Full name</Label>
+          <Input
+            id="fullName"
+            placeholder="Jane Doe"
+            autoComplete="name"
+            className="h-11 rounded-lg border-border bg-background"
+            {...form.register('fullName')}
+          />
+          {form.formState.errors.fullName && (
+            <p className="text-xs text-destructive">{form.formState.errors.fullName.message}</p>
+          )}
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="email" className="text-foreground">Email</Label>
+          <Input
+            id="email"
+            type="email"
+            placeholder="you@company.com"
+            autoComplete="email"
+            className="h-11 rounded-lg border-border bg-background"
+            {...form.register('email')}
+          />
+          {form.formState.errors.email && (
+            <p className="text-xs text-destructive">{form.formState.errors.email.message}</p>
+          )}
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="password" className="text-foreground">Password</Label>
+          <Input
+            id="password"
+            type="password"
+            autoComplete="new-password"
+            placeholder="At least 8 characters"
+            className="h-11 rounded-lg border-border bg-background"
+            {...form.register('password')}
+          />
+          {form.formState.errors.password && (
+            <p className="text-xs text-destructive">{form.formState.errors.password.message}</p>
+          )}
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="confirmPassword" className="text-foreground">Confirm password</Label>
+          <Input
+            id="confirmPassword"
+            type="password"
+            autoComplete="new-password"
+            placeholder="Same as above"
+            className="h-11 rounded-lg border-border bg-background"
+            {...form.register('confirmPassword')}
+          />
+          {form.formState.errors.confirmPassword && (
+            <p className="text-xs text-destructive">
+              {form.formState.errors.confirmPassword.message}
+            </p>
+          )}
+        </div>
+        <Button
+          type="submit"
+          className="h-11 w-full rounded-lg font-medium"
+          disabled={submitting}
+        >
+          {submitting ? (
+            <>
+              <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />
+              Creating account…
+            </>
+          ) : (
+            'Create account'
+          )}
+        </Button>
+      </form>
+    </AuthLayout>
   )
 }

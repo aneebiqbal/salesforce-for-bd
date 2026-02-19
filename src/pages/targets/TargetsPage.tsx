@@ -44,8 +44,11 @@ export const TargetsPage = () => {
   const { platforms } = usePlatforms()
   const { members: assignableMembers } = useAssignableMembers()
 
-  const yearStart = '2020-01-01'
-  const yearEnd = '2030-12-31'
+  const now = new Date()
+  const yearEnd = now.toISOString().slice(0, 10)
+  const yearStartDate = new Date(now)
+  yearStartDate.setFullYear(now.getFullYear() - 1)
+  const yearStart = yearStartDate.toISOString().slice(0, 10)
   const { activities } = useActivities(undefined, yearStart, yearEnd)
 
   const currentValueByTarget = useMemo(() => {
