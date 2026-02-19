@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -25,6 +25,7 @@ const loginSchema = z.object({
 type LoginForm = z.infer<typeof loginSchema>
 
 export const Login = () => {
+  const navigate = useNavigate()
   const { session, loading: authLoading, signIn } = useAuthContext()
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -40,7 +41,7 @@ export const Login = () => {
     try {
       await signIn(data.email, data.password)
       toast.success('Signed in')
-      window.location.href = '/dashboard'
+      navigate('/dashboard', { replace: true })
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Sign in failed'
       setError(msg)
@@ -66,9 +67,9 @@ export const Login = () => {
             <CardDescription>You are signed in.</CardDescription>
           </CardHeader>
           <CardContent>
-            <a href="/dashboard" className="text-primary underline">
+            <Link to="/dashboard" className="text-primary underline">
               Go to dashboard
-            </a>
+            </Link>
           </CardContent>
         </Card>
       </div>

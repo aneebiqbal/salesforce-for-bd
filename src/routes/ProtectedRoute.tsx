@@ -63,9 +63,9 @@ export const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) 
       <div className="flex min-h-dvh items-center justify-center bg-background p-4">
         <div className="text-center space-y-3">
           <p className="text-muted-foreground">You don’t have access to this page.</p>
-          <a href="/dashboard" className="text-primary underline">
+          <Link to="/dashboard" className="text-primary underline">
             Go to dashboard
-          </a>
+          </Link>
         </div>
       </div>
     )

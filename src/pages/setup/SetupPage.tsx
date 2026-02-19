@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -31,6 +32,7 @@ const setupSchema = z
 type SetupForm = z.infer<typeof setupSchema>
 
 export const SetupPage = () => {
+  const navigate = useNavigate()
   const { signUp } = useAuthContext()
   const [setupRequired, setSetupRequired] = useState<boolean | null>(null)
   const [checkLoading, setCheckLoading] = useState(true)
@@ -66,7 +68,7 @@ export const SetupPage = () => {
       if (session?.user?.id) {
         await supabase.rpc('promote_to_admin', { target_user_id: session.user.id })
       }
-      window.location.href = '/dashboard'
+      navigate('/dashboard', { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Setup failed')
       setSubmitting(false)

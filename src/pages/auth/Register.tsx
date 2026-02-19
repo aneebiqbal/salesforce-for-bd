@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -31,6 +31,7 @@ const registerSchema = z
 type RegisterForm = z.infer<typeof registerSchema>
 
 export const Register = () => {
+  const navigate = useNavigate()
   const { signUp } = useAuthContext()
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -45,7 +46,7 @@ export const Register = () => {
     setSubmitting(true)
     try {
       await signUp(data.email, data.password, data.fullName)
-      window.location.href = '/login'
+      navigate('/login', { replace: true })
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Registration failed'
       if (msg.toLowerCase().includes('rate') || msg.toLowerCase().includes('limit') || msg.toLowerCase().includes('wait')) {
