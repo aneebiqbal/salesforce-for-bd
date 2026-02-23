@@ -5,15 +5,18 @@ import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Progress } from '@/components/ui/progress'
 import { ActivityQuickFillSheet } from '@/components/activities/ActivityQuickFillSheet'
 import { useAuth } from '@/hooks/useAuth'
 import { useProfiles } from '@/hooks/useProfiles'
 import { useActivities } from '@/hooks/useActivities'
 import { useCheckInStatus, useCheckIn } from '@/hooks/useCheckIn'
 import type { ProfileWithPlatform, DailyActivity as DailyActivityType } from '@/types'
-import type { DailyActivityInsert } from '@/hooks/useActivities'
 import { Link } from 'react-router'
-import { Briefcase, Mail, Linkedin, Check } from 'lucide-react'
+import {
+  Briefcase, Mail, Linkedin, CheckCircle2, Clock, ChevronRight,
+  ClipboardList, AlertCircle, LogOut, Calendar,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const today = () => new Date().toISOString().slice(0, 10)
@@ -22,10 +25,9 @@ export const DailyActivity = () => {
   const { user } = useAuth()
   const [activityDate, setActivityDate] = useState(today)
   const [sheetProfile, setSheetProfile] = useState<ProfileWithPlatform | null>(null)
-  const [inlineValues, setInlineValues] = useState<Record<string, Partial<Record<string, number>>>>({})
 
   const { profiles, isLoading: profilesLoading } = useProfiles(user?.id)
-  const { activities, isLoading: activitiesLoading, upsertActivity, isUpserting } = useActivities(
+  const { activities, isLoading: activitiesLoading, upsertActivity } = useActivities(
     user?.id,
     activityDate,
     activityDate
@@ -44,13 +46,11 @@ export const DailyActivity = () => {
 
   const activityByProfile = useMemo(() => {
     const map = new Map<string, DailyActivityType>()
-    for (const a of activities ?? []) {
-      map.set(a.profile_id, a)
-    }
+    for (const a of activities ?? []) map.set(a.profile_id, a)
     return map
   }, [activities])
 
-  // Task 7: Auto check-out previous session if BD left without checking out
+  // Auto check-out previous session
   const autoCheckOutDone = useRef(false)
   useEffect(() => {
     if (!user?.id || autoCheckOutDone.current) return
@@ -60,37 +60,25 @@ export const DailyActivity = () => {
     })
   }, [user?.id])
 
-  // Task 1: Auto check-in when BD opens /activities for today (silent, no button)
+  // Auto check-in on open for today
   const autoCheckInDone = useRef(false)
   useEffect(() => {
     if (
-      !user?.id ||
-      !firstProfile?.id ||
-      !firstProfile?.platform_id ||
-      activityDate !== today() ||
-      checkInLoading ||
-      checkInTime != null ||
-      autoCheckInDone.current
-    ) {
-      return
-    }
+      !user?.id || !firstProfile?.id || !firstProfile?.platform_id ||
+      activityDate !== today() || checkInLoading || checkInTime != null || autoCheckInDone.current
+    ) return
     autoCheckInDone.current = true
-    checkIn().catch(() => {
-      autoCheckInDone.current = false
-    })
+    checkIn().catch(() => { autoCheckInDone.current = false })
   }, [user?.id, firstProfile?.id, firstProfile?.platform_id, activityDate, checkInLoading, checkInTime, checkIn])
 
-  // Task 10: 1-9 open corresponding profile card
+  // Keyboard shortcut: 1-9 opens profile
   useEffect(() => {
     if (!profiles?.length) return
     const onKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return
       const n = e.key >= '1' && e.key <= '9' ? parseInt(e.key, 10) : 0
-      if (n >= 1 && n <= profiles.length) {
-        e.preventDefault()
-        setSheetProfile(profiles[n - 1])
-      }
+      if (n >= 1 && n <= profiles.length) { e.preventDefault(); setSheetProfile(profiles[n - 1]) }
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
@@ -98,11 +86,17 @@ export const DailyActivity = () => {
 
   const hoursWorked = useMemo(() => {
     if (!checkInTime || !checkOutTime) return null
-    const a = new Date(checkInTime).getTime()
-    const b = new Date(checkOutTime).getTime()
-    const hours = (b - a) / (1000 * 60 * 60)
+    const hours = (new Date(checkOutTime).getTime() - new Date(checkInTime).getTime()) / (1000 * 60 * 60)
     return hours.toFixed(1)
   }, [checkInTime, checkOutTime])
+
+  const filledCount = useMemo(
+    () => profiles?.filter((p) => activityByProfile.has(p.id)).length ?? 0,
+    [profiles, activityByProfile]
+  )
+  const totalCount = profiles?.length ?? 0
+  const allFilled = totalCount > 0 && filledCount === totalCount
+  const progressPct = totalCount > 0 ? Math.round((filledCount / totalCount) * 100) : 0
 
   const unfilledProfiles = useMemo(
     () => profiles?.filter((p) => !activityByProfile.get(p.id)) ?? [],
@@ -125,95 +119,22 @@ export const DailyActivity = () => {
     try {
       await upsertActivity(payload)
       const name = sheetProfile?.name ?? 'Profile'
-      const platformName = sheetProfile?.platform?.display_name ?? ''
       const remaining = Math.max(0, unfilledProfiles.length - 1)
       if (remaining === 0) {
-        toast.success('🎉 All done for today!')
+        toast.success('All profiles logged for today!')
       } else {
-        toast.success(`✅ ${name} - ${platformName} saved! ${remaining} more to go`)
+        toast.success(`${name} saved — ${remaining} profile${remaining !== 1 ? 's' : ''} left`)
       }
       setSheetProfile(null)
       const next = getNextUnfilledProfile(sheetProfile)
-      if (next) setTimeout(() => setSheetProfile(next), 500)
+      if (next) setTimeout(() => setSheetProfile(next), 400)
     } catch {
-      toast.error('Failed to save')
+      toast.error('Failed to save. Please try again.')
     }
   }
 
-  const existingForSheet = sheetProfile
-    ? activityByProfile.get(sheetProfile.id) ?? null
-    : null
-
-  const defaultActivityRow = useMemo(
-    () => ({
-      responses_received: 0,
-      leads_created: 0,
-      execution_completed: false,
-      proposals_sent: 0,
-      connects_used: 0,
-      warmup_messages: 0,
-      invites_received: 0,
-      interviews: 0,
-      easy_applies: 0,
-      connection_requests: 0,
-      direct_applies: 0,
-      dms_sent: 0,
-      fetched_emails: 0,
-      inmail_sent: 0,
-      emails_sent: 0,
-      open_rate: 0,
-      reply_rate: 0,
-      bounced: 0,
-      meetings_booked: 0,
-    }),
-    []
-  )
-
-  const handleInlineSave = async (profile: ProfileWithPlatform, _platformName: string) => {
-    const existing = activityByProfile.get(profile.id)
-    const inline = inlineValues[profile.id] ?? {}
-    const payload: DailyActivityInsert = {
-      profile_id: profile.id,
-      bd_member_id: user!.id,
-      platform_id: profile.platform_id,
-      activity_date: activityDate,
-      check_in_time: existing?.check_in_time ?? null,
-      check_out_time: existing?.check_out_time ?? null,
-      ...defaultActivityRow,
-      ...(existing
-        ? {
-            responses_received: existing.responses_received,
-            leads_created: existing.leads_created,
-            execution_completed: existing.execution_completed,
-            proposals_sent: existing.proposals_sent,
-            connects_used: existing.connects_used,
-            warmup_messages: existing.warmup_messages,
-            invites_received: existing.invites_received,
-            interviews: existing.interviews,
-            easy_applies: existing.easy_applies,
-            connection_requests: existing.connection_requests,
-            direct_applies: existing.direct_applies,
-            dms_sent: existing.dms_sent,
-            fetched_emails: existing.fetched_emails,
-            inmail_sent: existing.inmail_sent,
-            emails_sent: existing.emails_sent,
-            open_rate: existing.open_rate,
-            reply_rate: existing.reply_rate,
-            bounced: existing.bounced,
-            meetings_booked: existing.meetings_booked,
-          }
-        : {}),
-      ...inline,
-      notes: existing?.notes ?? null,
-      remarks: existing?.remarks ?? null,
-    }
-    try {
-      await upsertActivity(payload)
-      toast.success(`${profile.name} saved`)
-    } catch {
-      toast.error('Failed to save')
-    }
-  }
+  const existingForSheet = sheetProfile ? activityByProfile.get(sheetProfile.id) ?? null : null
+  const isToday = activityDate === today()
 
   if (!user) {
     return (
@@ -224,83 +145,149 @@ export const DailyActivity = () => {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Daily Status</h1>
-        <p className="text-muted-foreground">Check in, fill your numbers, check out.</p>
-      </div>
-
-      {/* Top bar: date, check-in, check-out, hours */}
-      <Card>
-        <CardContent className="flex flex-wrap items-center gap-4 py-4">
-          <div className="flex min-h-[44px] items-center gap-2">
-            <label htmlFor="activity-date" className="text-sm font-medium text-muted-foreground">
-              Date
-            </label>
+    <div className="space-y-5">
+      {/* Page header */}
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Log Today's Activity</h1>
+          <p className="text-muted-foreground text-sm mt-0.5">
+            Log your numbers right after each outreach session — proposals sent, applies done, DMs sent.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 rounded-md border border-input bg-background px-3 py-2">
+            <Calendar className="size-4 text-muted-foreground" />
             <Input
               id="activity-date"
               type="date"
               value={activityDate}
               onChange={(e) => setActivityDate(e.target.value)}
-              className="min-h-[44px] min-w-[140px]"
+              className="h-auto border-0 bg-transparent p-0 text-sm focus-visible:ring-0"
             />
           </div>
-          <div className="flex min-h-[44px] items-center gap-2">
-            <Button
-              size="lg"
-              variant="outline"
-              className="min-h-[44px]"
-              disabled={!checkInTime || !!checkOutTime || isCheckingOut || checkInLoading}
-              onClick={() => checkOut()}
-            >
-              {isCheckingOut ? '…' : 'Check Out'}
-            </Button>
+        </div>
+      </div>
+
+      {/* Workflow tip — shown until first profile is logged */}
+      {!activitiesLoading && activities.length === 0 && profiles && profiles.length > 0 && (
+        <div className="flex items-start gap-3 rounded-lg border border-blue-200 bg-blue-50/50 dark:border-blue-800/40 dark:bg-blue-950/20 px-4 py-3">
+          <span className="text-lg leading-none mt-0.5">💡</span>
+          <div className="text-sm">
+            <p className="font-medium text-blue-900 dark:text-blue-100">Log right after you finish each account's outreach session.</p>
+            <p className="text-blue-700/80 dark:text-blue-300/80 mt-0.5">
+              <strong>LinkedIn:</strong> Easy applies, connection requests &amp; DMs — volume is key, push daily limits.
+              &nbsp;<strong>Upwork:</strong> Proposals &amp; connects used.
+              &nbsp;<strong>Email:</strong> Emails sent + open rate from your dashboard.
+            </p>
           </div>
-          {(checkInTime || checkOutTime) && (
-            <div className="flex min-h-[44px] items-center gap-2 text-sm">
-              {checkInTime && (
-                <span className="text-muted-foreground">
-                  In: {new Date(checkInTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </span>
-              )}
-              {checkOutTime && (
-                <span className="text-muted-foreground">
-                  Out: {new Date(checkOutTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </span>
-              )}
-              {hoursWorked != null && (
-                <Badge variant="secondary">Hours: {hoursWorked}</Badge>
-              )}
+        </div>
+      )}
+
+      {/* Session status bar */}
+      <Card className={cn(
+        'border',
+        isToday && checkInTime && !checkOutTime ? 'border-green-500/40 bg-green-500/5' :
+        isToday && !checkInTime ? 'border-yellow-500/40 bg-yellow-500/5' : ''
+      )}>
+        <CardContent className="flex flex-wrap items-center justify-between gap-4 px-4 py-3">
+          <div className="flex flex-wrap items-center gap-4">
+            {/* Check-in status */}
+            <div className="flex items-center gap-2">
+              <Clock className={cn('size-4', checkInTime ? 'text-green-600' : 'text-muted-foreground')} />
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Started</p>
+                <p className="text-sm font-semibold">
+                  {checkInTime
+                    ? new Date(checkInTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                    : isToday ? 'Auto-starting…' : '—'}
+                </p>
+              </div>
             </div>
-          )}
+
+            {checkOutTime && (
+              <div className="flex items-center gap-2">
+                <LogOut className="size-4 text-muted-foreground" />
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Ended</p>
+                  <p className="text-sm font-semibold">
+                    {new Date(checkOutTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {hoursWorked && (
+              <Badge variant="secondary" className="text-sm px-3 py-1">
+                {hoursWorked} hrs worked
+              </Badge>
+            )}
+          </div>
+
+          {/* Progress + end day */}
+          <div className="flex items-center gap-4">
+            {totalCount > 0 && (
+              <div className="flex items-center gap-3">
+                <div className="text-right">
+                  <p className="text-xs text-muted-foreground">Profiles logged</p>
+                  <p className="text-sm font-bold">{filledCount} / {totalCount}</p>
+                </div>
+                <div className="w-24">
+                  <Progress value={progressPct} className="h-2" />
+                </div>
+              </div>
+            )}
+            {isToday && (
+              <Button
+                variant={allFilled ? 'default' : 'outline'}
+                size="sm"
+                className="min-h-[40px] gap-2"
+                disabled={!checkInTime || !!checkOutTime || isCheckingOut || checkInLoading}
+                onClick={() => checkOut().then(() => toast.success('Great work! Day ended.'))}
+              >
+                <LogOut className="size-4" />
+                {isCheckingOut ? 'Ending…' : checkOutTime ? 'Day Ended' : 'End My Day'}
+              </Button>
+            )}
+          </div>
         </CardContent>
       </Card>
 
-      {/* Profile cards grid */}
+      {/* Profile cards */}
       <div>
-        <h2 className="mb-3 text-sm font-medium text-muted-foreground">Your profiles — tap to fill</h2>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-semibold">
+            Your Accounts
+            <span className="ml-2 font-normal text-muted-foreground">— tap a card to log numbers</span>
+          </h2>
+          {filledCount > 0 && (
+            <span className="text-xs text-muted-foreground">
+              {progressPct}% complete
+            </span>
+          )}
+        </div>
+
         {profilesLoading || activitiesLoading ? (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {[1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-28 rounded-lg" />
-            ))}
+            {[1, 2, 3].map((i) => <Skeleton key={i} className="h-32 rounded-xl" />)}
           </div>
         ) : profiles?.length === 0 ? (
-          <Card>
-            <CardContent className="py-8 text-center space-y-3">
-              <p className="text-sm text-muted-foreground">
-                No profiles assigned to you yet. Ask your admin to assign profiles.
-              </p>
+          <Card className="border-dashed">
+            <CardContent className="py-10 text-center space-y-3">
+              <AlertCircle className="mx-auto size-8 text-muted-foreground/50" />
+              <div>
+                <p className="font-medium">No accounts assigned yet</p>
+                <p className="text-sm text-muted-foreground mt-1">Ask your admin to assign accounts to you.</p>
+              </div>
               {user?.role === 'admin' && (
                 <Button asChild variant="outline" size="sm">
-                  <Link to="/profiles">Go to Profiles</Link>
+                  <Link to="/profiles">Manage Accounts</Link>
                 </Button>
               )}
             </CardContent>
           </Card>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {profiles?.map((profile) => {
+            {profiles?.map((profile, idx) => {
               const activity = activityByProfile.get(profile.id)
               const platform = profile.platform
               const filled = !!activity
@@ -309,92 +296,88 @@ export const DailyActivity = () => {
               const responses = activity?.responses_received ?? 0
               const leads = activity?.leads_created ?? 0
 
-              const summary =
-                filled && (totalActions > 0 || responses > 0 || leads > 0)
-                  ? `${totalActions} actions, ${responses} responses, ${leads} leads`
-                  : filled
-                    ? 'Filled'
-                    : 'Tap to fill'
-
-              const isUpwork = platform?.name === 'upwork'
-              const isLinkedIn = platform?.name === 'linkedin'
-              const showInlineQuickFill = (isUpwork || isLinkedIn) && platform
-
-              const inline = inlineValues[profile.id] ?? {}
-              const upworkVals = {
-                p: inline.proposals_sent ?? activity?.proposals_sent ?? 0,
-                c: inline.connects_used ?? activity?.connects_used ?? 0,
-                w: inline.warmup_messages ?? activity?.warmup_messages ?? 0,
-                i: inline.invites_received ?? activity?.invites_received ?? 0,
-              }
-              const linkedInVals = {
-                ea: inline.easy_applies ?? activity?.easy_applies ?? 0,
-                cr: inline.connection_requests ?? activity?.connection_requests ?? 0,
-                da: inline.direct_applies ?? activity?.direct_applies ?? 0,
-                dm: inline.dms_sent ?? activity?.dms_sent ?? 0,
-              }
-
               return (
-                <Card
+                <button
                   key={profile.id}
+                  type="button"
                   className={cn(
-                    'min-h-[44px] cursor-pointer transition-colors touch-manipulation',
-                    !filled && 'border-muted-foreground/30 bg-muted/30',
-                    filled && !completed && 'border-yellow-500/50',
-                    completed && 'border-green-500/50 bg-green-500/5'
+                    'group relative w-full rounded-xl border text-left transition-all duration-150',
+                    'hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 active:shadow-sm',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+                    !filled && 'border-border bg-card',
+                    filled && !completed && 'border-amber-400/60 bg-amber-50/30 dark:bg-amber-950/10',
+                    completed && 'border-green-500/50 bg-green-50/40 dark:bg-green-950/10'
                   )}
                   onClick={() => setSheetProfile(profile)}
                 >
-                  <CardContent className="flex flex-col gap-2 p-4">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-medium truncate">{profile.name}</span>
-                      {platform && (
-                        <PlatformBadge name={platform.name} displayName={platform.display_name} />
-                      )}
+                  {/* Status stripe on left */}
+                  <div className={cn(
+                    'absolute left-0 top-0 bottom-0 w-1 rounded-l-xl',
+                    !filled ? 'bg-muted' : completed ? 'bg-green-500' : 'bg-amber-400'
+                  )} />
+
+                  <div className="p-4 pl-5">
+                    {/* Header row */}
+                    <div className="flex items-start justify-between gap-2 mb-3">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          {profiles.length <= 9 && (
+                            <span className="text-[10px] font-mono text-muted-foreground/60 bg-muted px-1 rounded">
+                              {idx + 1}
+                            </span>
+                          )}
+                          <span className="font-semibold truncate">{profile.name}</span>
+                        </div>
+                        {platform && (
+                          <PlatformBadge name={platform.name} displayName={platform.display_name} />
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
+                        {completed ? (
+                          <CheckCircle2 className="size-5 text-green-600" />
+                        ) : filled ? (
+                          <ClipboardList className="size-5 text-amber-500" />
+                        ) : (
+                          <ChevronRight className="size-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+                        )}
+                      </div>
                     </div>
-                    <p className={cn(
-                      'text-sm',
-                      !filled ? 'text-muted-foreground' : completed ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'
-                    )}>
-                      {!filled ? 'Tap to fill' : completed ? '✓ Done' : summary}
-                    </p>
-                    {showInlineQuickFill && (
-                      <div
-                        className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-border/50"
-                        onClick={(e) => e.stopPropagation()}
-                        role="presentation"
-                      >
-                        {isUpwork && (
-                          <>
-                            <InlineNum label="P" value={upworkVals.p} onChange={(v) => setInlineValues((prev) => ({ ...prev, [profile.id]: { ...prev[profile.id], proposals_sent: v } }))} />
-                            <InlineNum label="C" value={upworkVals.c} onChange={(v) => setInlineValues((prev) => ({ ...prev, [profile.id]: { ...prev[profile.id], connects_used: v } }))} />
-                            <InlineNum label="W" value={upworkVals.w} onChange={(v) => setInlineValues((prev) => ({ ...prev, [profile.id]: { ...prev[profile.id], warmup_messages: v } }))} />
-                            <InlineNum label="I" value={upworkVals.i} onChange={(v) => setInlineValues((prev) => ({ ...prev, [profile.id]: { ...prev[profile.id], invites_received: v } }))} />
-                          </>
-                        )}
-                        {isLinkedIn && (
-                          <>
-                            <InlineNum label="EA" value={linkedInVals.ea} onChange={(v) => setInlineValues((prev) => ({ ...prev, [profile.id]: { ...prev[profile.id], easy_applies: v } }))} />
-                            <InlineNum label="CR" value={linkedInVals.cr} onChange={(v) => setInlineValues((prev) => ({ ...prev, [profile.id]: { ...prev[profile.id], connection_requests: v } }))} />
-                            <InlineNum label="DA" value={linkedInVals.da} onChange={(v) => setInlineValues((prev) => ({ ...prev, [profile.id]: { ...prev[profile.id], direct_applies: v } }))} />
-                            <InlineNum label="DM" value={linkedInVals.dm} onChange={(v) => setInlineValues((prev) => ({ ...prev, [profile.id]: { ...prev[profile.id], dms_sent: v } }))} />
-                          </>
-                        )}
-                        <Button
-                          type="button"
-                          size="icon"
-                          variant="secondary"
-                          className="h-8 w-8 shrink-0"
-                          disabled={isUpserting}
-                          onClick={() => handleInlineSave(profile, platform?.display_name ?? '')}
-                          aria-label="Save"
-                        >
-                          <Check className="size-4" />
-                        </Button>
+
+                    {/* Status line */}
+                    {!filled ? (
+                      <p className="text-sm text-muted-foreground">
+                        {platform?.name === 'linkedin'
+                          ? 'Tap to log applies, connections & DMs'
+                          : platform?.name === 'upwork'
+                            ? 'Tap to log proposals & connects'
+                            : 'Tap to log emails sent & response rate'}
+                      </p>
+                    ) : (
+                      <div className="space-y-1.5">
+                        <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-sm">
+                          {totalActions > 0 && (
+                            <span className="font-medium">{totalActions} actions</span>
+                          )}
+                          {responses > 0 && (
+                            <span className="text-muted-foreground">{responses} responses</span>
+                          )}
+                          {leads > 0 && (
+                            <span className="text-muted-foreground">{leads} lead{leads !== 1 ? 's' : ''}</span>
+                          )}
+                          {totalActions === 0 && responses === 0 && leads === 0 && (
+                            <span className="text-muted-foreground">Numbers saved — tap to edit</span>
+                          )}
+                        </div>
+                        <p className={cn(
+                          'text-xs font-medium',
+                          completed ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'
+                        )}>
+                          {completed ? 'Execution marked complete' : 'Tap to mark execution complete'}
+                        </p>
                       </div>
                     )}
-                  </CardContent>
-                </Card>
+                  </div>
+                </button>
               )
             })}
           </div>
@@ -412,57 +395,30 @@ export const DailyActivity = () => {
         onSave={handleSave}
       />
 
-      {/* Task 7: Floating banner when all profiles filled but not checked out */}
-      {activityDate === today() &&
-        checkInTime &&
-        !checkOutTime &&
-        unfilledProfiles.length === 0 &&
-        (profiles?.length ?? 0) > 0 && (
-          <div
-            className="fixed bottom-0 left-0 right-0 z-40 border-t bg-primary px-4 py-3 text-center text-primary-foreground shadow-lg"
-            role="button"
-            tabIndex={0}
-            onClick={() => {
-              checkOut().then(() => {
-                toast.success('Day ended!')
-              })
-            }}
-            onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLElement).click()}
-          >
-            All profiles filled! Tap to end your day
+      {/* Floating end-day banner */}
+      {isToday && checkInTime && !checkOutTime && allFilled && (
+        <div
+          className="fixed bottom-0 left-0 right-0 z-40 flex items-center justify-between border-t bg-green-600 px-6 py-4 shadow-lg"
+          role="button"
+          tabIndex={0}
+          onClick={() => checkOut().then(() => toast.success('Great work! Day ended.'))}
+          onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLElement).click()}
+        >
+          <div className="text-white">
+            <p className="font-semibold">All accounts logged!</p>
+            <p className="text-sm text-green-100">Tap here to end your workday and clock out.</p>
           </div>
-        )}
-    </div>
-  )
-}
-
-function InlineNum({
-  label,
-  value,
-  onChange,
-}: {
-  label: string
-  value: number
-  onChange: (v: number) => void
-}) {
-  return (
-    <div className="flex items-center gap-0.5">
-      <span className="text-[10px] text-muted-foreground w-5">{label}:</span>
-      <Input
-        type="number"
-        min={0}
-        max={999}
-        value={value || ''}
-        onChange={(e) => onChange(Math.max(0, Number(e.target.value) || 0))}
-        className="h-8 w-12 rounded px-1 text-center text-sm [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-      />
+          <Button variant="secondary" size="sm" className="shrink-0">
+            End My Day
+          </Button>
+        </div>
+      )}
     </div>
   )
 }
 
 function PlatformBadge({ name, displayName }: { name: string; displayName: string }) {
-  const icon = name === 'upwork' ? Briefcase : name === 'linkedin' ? Linkedin : Mail
-  const Icon = icon
+  const Icon = name === 'upwork' ? Briefcase : name === 'linkedin' ? Linkedin : Mail
   const color =
     name === 'upwork'
       ? 'bg-green-500/20 text-green-700 dark:text-green-400'
@@ -470,8 +426,8 @@ function PlatformBadge({ name, displayName }: { name: string; displayName: strin
         ? 'bg-blue-500/20 text-blue-700 dark:text-blue-400'
         : 'bg-orange-500/20 text-orange-700 dark:text-orange-400'
   return (
-    <Badge variant="secondary" className={cn('shrink-0 gap-1', color)}>
-      <Icon className="size-3.5" />
+    <Badge variant="secondary" className={cn('mt-1 gap-1 text-xs', color)}>
+      <Icon className="size-3" />
       {displayName}
     </Badge>
   )

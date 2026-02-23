@@ -27,6 +27,7 @@ import { useActivities } from '@/hooks/useActivities'
 import { useProfiles } from '@/hooks/useProfiles'
 import { usePlatforms } from '@/hooks/usePlatforms'
 import { useAssignableMembers } from '@/hooks/useTeam'
+import { createNotification } from '@/hooks/useNotifications'
 import type { ProfileWithPlatform } from '@/types'
 import { Briefcase, Linkedin, Mail, Pencil, Power, PowerOff } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -81,21 +82,41 @@ export const ProfilesManagement = () => {
       toast.error('A profile with this name, platform, and BD member already exists.')
       return
     }
+    const assigneeId = values.bd_member_id
+    const previousAssignee = editingProfile?.bd_member_id
     try {
       if (editingProfile) {
         await updateProfile({
           id: editingProfile.id,
-          payload: { name: values.name, platform_id: values.platform_id, bd_member_id: values.bd_member_id, status: values.status, notes: values.notes || null },
+          payload: { name: values.name, platform_id: values.platform_id, bd_member_id: assigneeId, status: values.status, notes: values.notes || null },
         })
+        if (isAdmin && assigneeId && assigneeId !== previousAssignee && assigneeId !== user?.id) {
+          await createNotification({
+            user_id: assigneeId,
+            type: 'profile_assigned',
+            title: 'Account assigned to you',
+            message: values.name,
+            link: '/profiles',
+          })
+        }
         toast.success('Profile updated')
       } else {
         await createProfile({
           name: values.name,
           platform_id: values.platform_id,
-          bd_member_id: values.bd_member_id,
+          bd_member_id: assigneeId,
           status: values.status,
           notes: values.notes || null,
         })
+        if (isAdmin && assigneeId && assigneeId !== user?.id) {
+          await createNotification({
+            user_id: assigneeId,
+            type: 'profile_assigned',
+            title: 'Account assigned to you',
+            message: values.name,
+            link: '/profiles',
+          })
+        }
         toast.success('Profile created')
       }
       handleCloseDialog()

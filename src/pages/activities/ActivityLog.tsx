@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Badge } from '@/components/ui/badge'
 import { ActivityLogTable } from '@/components/tables/ActivityLogTable'
 import { useAuth } from '@/hooks/useAuth'
 import { useActivityLog } from '@/hooks/useActivityLog'
@@ -34,6 +35,7 @@ export const ActivityLog = () => {
   })
 
   const totalPages = Math.ceil(total / pageSize) || 1
+  const completedCount = rows.filter((r) => r.execution_completed).length
 
   const handleRowClick = () => {
     navigate('/activities')
@@ -42,13 +44,20 @@ export const ActivityLog = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Activity Log</h1>
-        <p className="text-muted-foreground">History of daily activities.</p>
+        <h1 className="text-2xl font-semibold tracking-tight">Activity History</h1>
+        <p className="text-muted-foreground">
+          {isAdmin
+            ? 'View and filter daily activity across the team. Use filters to see by person, platform, or date range.'
+            : 'Your logged daily activity. Each row is one profile for one day.'}
+        </p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Filters</CardTitle>
+          <CardTitle className="text-base">Filters</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            {isAdmin ? 'Filter by BD member, platform, and date range.' : 'Filter by platform and date range.'}
+          </p>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
@@ -65,10 +74,10 @@ export const ActivityLog = () => {
                 <Label>BD Member</Label>
                 <Select value={bdMemberId} onValueChange={(v) => { setBdMemberId(v); setPage(1) }}>
                   <SelectTrigger>
-                    <SelectValue placeholder="All" />
+                    <SelectValue placeholder={bdMemberId === ALL_VALUE ? 'All team' : undefined} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={ALL_VALUE}>All</SelectItem>
+                    <SelectItem value={ALL_VALUE}>All team</SelectItem>
                     {bdUsers.map((u) => (
                       <SelectItem key={u.id} value={u.id}>
                         {u.full_name}
@@ -99,8 +108,23 @@ export const ActivityLog = () => {
       </Card>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Activities (newest first)</CardTitle>
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
+          <div>
+            <CardTitle className="text-base">
+              {isAdmin ? (bdMemberId !== ALL_VALUE ? 'Activities' : 'Team activities') : 'My activities'}
+            </CardTitle>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              Newest first
+              {total > 0 && (
+                <> · {completedCount} of {rows.length} on this page marked done</>
+              )}
+            </p>
+          </div>
+          {total > 0 && (
+            <Badge variant="secondary" className="text-xs">
+              {total} total
+            </Badge>
+          )}
         </CardHeader>
         <CardContent>
           <ActivityLogTable rows={rows} isLoading={isLoading} onRowClick={handleRowClick} />

@@ -108,6 +108,8 @@ export interface Lead {
   assigned_to: string | null
   estimated_value: number
   notes: string | null
+  follow_up_date: string | null   // YYYY-MM-DD — when to follow up next
+  last_contacted_at: string | null // YYYY-MM-DD — last time BD touched this lead
   created_at: string
   updated_at: string
   source_platform?: { display_name: string } | null
@@ -145,4 +147,18 @@ export interface Project {
   notes: string | null
   created_at: string
   updated_at: string
+}
+
+/** notifications table - when admin assigns task/lead/profile to BD */
+export type NotificationType = 'task_assigned' | 'lead_assigned' | 'profile_assigned'
+
+export interface Notification {
+  id: string
+  user_id: string
+  type: NotificationType
+  title: string
+  message: string | null
+  link: string | null
+  read_at: string | null
+  created_at: string
 }

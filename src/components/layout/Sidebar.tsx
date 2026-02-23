@@ -15,29 +15,40 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { useUIStore } from '@/stores/uiStore'
 import { useAuth } from '@/hooks/useAuth'
+import { useIncompleteWork } from '@/hooks/useIncompleteWork'
 import { Separator } from '@/components/ui/separator'
 
-const navItems: { to: string; label: string; icon: typeof LayoutDashboard; adminOnly?: boolean }[] = [
-  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/activities', label: 'Daily Activity', icon: CalendarCheck },
-  { to: '/activities/log', label: 'Activity Log', icon: History },
-  { to: '/leads', label: 'Leads Pipeline', icon: Kanban },
-  { to: '/profiles', label: 'Profiles', icon: Users },
-  { to: '/team', label: 'Team', icon: UserCog, adminOnly: true },
-  { to: '/targets', label: 'Targets', icon: Target },
-  { to: '/projects', label: 'Projects', icon: FolderKanban },
-  { to: '/reports', label: 'Reports', icon: BarChart3 },
-  { to: '/settings', label: 'Settings', icon: Settings },
+const navItems: { to: string; label: string; sublabel: string; icon: typeof LayoutDashboard; adminOnly?: boolean }[] = [
+  { to: '/dashboard', label: 'Dashboard', sublabel: 'Your daily overview', icon: LayoutDashboard },
+  { to: '/activities', label: 'Log Activity', sublabel: 'Fill today\'s numbers', icon: CalendarCheck },
+  { to: '/activities/log', label: 'Activity History', sublabel: 'Past logged days', icon: History },
+  { to: '/leads', label: 'Leads Pipeline', sublabel: 'Track prospects', icon: Kanban },
+  { to: '/profiles', label: 'Accounts', sublabel: 'Managed profiles', icon: Users },
+  { to: '/team', label: 'Team Members', sublabel: 'Manage BD team', icon: UserCog, adminOnly: true },
+  { to: '/targets', label: 'Goals & Targets', sublabel: 'Performance targets', icon: Target },
+  { to: '/projects', label: 'Projects', sublabel: 'Won projects', icon: FolderKanban },
+  { to: '/reports', label: 'Reports', sublabel: 'Analytics & export', icon: BarChart3 },
+  { to: '/settings', label: 'Settings', sublabel: 'Account & appearance', icon: Settings },
 ]
 
 export const Sidebar = () => {
   const location = useLocation()
   const { user } = useAuth()
   const { sidebarOpen, toggleSidebar } = useUIStore()
+  const incomplete = useIncompleteWork()
   const isAdmin = user?.role === 'admin'
   const items = navItems.filter((item) => !item.adminOnly || isAdmin)
+
+  const getBadge = (to: string) => {
+    if (to === '/dashboard' && !isAdmin && incomplete.incompleteCount > 0)
+      return incomplete.incompleteCount
+    if (to === '/activities' && !isAdmin && incomplete.activityIncomplete) return '!'
+    if (to === '/targets' && incomplete.pendingTaskCount > 0) return incomplete.pendingTaskCount
+    return null
+  }
 
   return (
     <aside
@@ -64,9 +75,8 @@ export const Sidebar = () => {
           )}
         </Button>
       </div>
-      <nav className="flex-1 space-y-1 overflow-auto p-2">
-        {items.map(({ to, label, icon: Icon }) => {
-          // Exact match OR starts-with-slash for sub-routes (e.g. /activities/log matches /activities/log not /activities)
+      <nav className="flex-1 space-y-0.5 overflow-auto p-2">
+        {items.map(({ to, label, sublabel, icon: Icon }) => {
           const isActive =
             to === '/dashboard'
               ? location.pathname.startsWith('/dashboard')
@@ -78,17 +88,35 @@ export const Sidebar = () => {
               key={to}
               to={to}
               className={cn(
-                'flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors',
+                'relative flex items-center gap-3 rounded-lg px-3 py-2 transition-colors',
                 isActive
                   ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-                  : 'hover:bg-sidebar-accent/50',
+                  : 'hover:bg-sidebar-accent/50 text-sidebar-foreground/80 hover:text-sidebar-foreground',
                 !sidebarOpen && 'justify-center px-2'
               )}
-              title={!sidebarOpen ? label : undefined}
+              title={!sidebarOpen ? `${label} — ${sublabel}` : undefined}
               aria-label={!sidebarOpen ? label : undefined}
             >
               <Icon className="size-5 shrink-0" />
-              {sidebarOpen && <span className="truncate">{label}</span>}
+              {sidebarOpen && (
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="truncate text-sm font-medium leading-tight">{label}</p>
+                    {getBadge(to) !== null && (
+                      <Badge
+                        variant={to === '/activities' && getBadge(to) === '!' ? 'destructive' : 'secondary'}
+                        className="ml-auto h-5 min-w-5 px-1 text-[10px]"
+                      >
+                        {getBadge(to)}
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="truncate text-[11px] text-sidebar-foreground/50 leading-tight mt-0.5">{sublabel}</p>
+                </div>
+              )}
+              {!sidebarOpen && getBadge(to) !== null && (
+                <span className="absolute right-1 top-1/2 -translate-y-1/2 size-2 rounded-full bg-destructive" aria-hidden />
+              )}
             </Link>
           )
         })}

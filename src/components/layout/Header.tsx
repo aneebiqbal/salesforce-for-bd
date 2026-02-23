@@ -1,6 +1,7 @@
 import { Link, useNavigate } from 'react-router'
 import { LogOut, User, LayoutDashboard } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { NotificationDropdown } from '@/components/notifications/NotificationDropdown'
 import { Badge } from '@/components/ui/badge'
 import {
   DropdownMenu,
@@ -45,6 +46,7 @@ export const Header = () => {
         </span>
       </div>
       <div className="flex items-center gap-2">
+        <NotificationDropdown />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="rounded-full">
