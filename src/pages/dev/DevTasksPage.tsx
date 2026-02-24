@@ -18,7 +18,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog'
-import { toast } from 'sonner-react'
+import { toast } from 'sonner'
 import {
   ListTodo,
   Plus,
@@ -30,9 +30,9 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useDevTasks, type DevTaskInsert } from '@/hooks/useDevTasks'
-import { useAssignableDevs } from '@/hooks/useAssignableDevs'
+import { useAssignableDevs } from '@/hooks/useTeam'
 import { useProjects } from '@/hooks/useProjects'
-import type { DevTask } from '@/types'
+import type { DevTask, UserProfile } from '@/types'
 import { cn } from '@/lib/utils'
 
 const todayStr = () => new Date().toISOString().slice(0, 10)
@@ -257,7 +257,7 @@ export const DevTasksPage = () => {
                 <SelectValue placeholder="Choose a developer" />
               </SelectTrigger>
               <SelectContent>
-                {devs.map((d) => (
+                {devs.map((d: UserProfile) => (
                   <SelectItem key={d.id} value={d.id}>
                     <span className="flex items-center gap-2">
                       <User className="size-4" />
@@ -308,7 +308,7 @@ export const DevTasksPage = () => {
                   <SelectValue placeholder="Select developer" />
                 </SelectTrigger>
                 <SelectContent>
-                  {devs.map((d) => (
+                  {devs.map((d: UserProfile) => (
                     <SelectItem key={d.id} value={d.id}>{d.full_name}</SelectItem>
                   ))}
                 </SelectContent>

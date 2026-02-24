@@ -644,7 +644,7 @@ function TargetCard({
             {isExpired && <Badge variant="secondary" className="text-xs">Expired</Badge>}
             {isFuture && <Badge variant="outline" className="text-xs">Upcoming</Badge>}
             {reached && !isExpired && <Badge className="text-xs bg-green-600">Reached ✓</Badge>}
-            {canManageTargets && (
+            {isAdmin && (
               <>
                 <button type="button" onClick={onEdit} className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
                   <Pencil className="size-3.5" />
@@ -794,7 +794,7 @@ function TaskForm({
         />
         <p className="text-xs text-muted-foreground">Leave blank for no deadline.</p>
       </div>
-      {canManageTargets && assignableMembers.length > 0 && (
+      {isAdmin && assignableMembers.length > 0 && (
         <div className="space-y-2">
           <Label>Assign to</Label>
           <Select value={bd_member_id} onValueChange={setBd_member_id}>

@@ -25,11 +25,11 @@ import { Link } from 'react-router'
 import { useAuth } from '@/hooks/useAuth'
 import { useProjects } from '@/hooks/useProjects'
 import { useProjectDevelopers } from '@/hooks/useProjectDevelopers'
-import { useAssignableDevs } from '@/hooks/useAssignableDevs'
+import { useAssignableDevs } from '@/hooks/useTeam'
 import { useLeads } from '@/hooks/useLeads'
 import { PROJECT_STATUSES } from '@/lib/constants'
 import { formatCurrency } from '@/lib/utils'
-import type { Project } from '@/types'
+import type { Project, UserProfile } from '@/types'
 import { Pencil, Trash2 } from 'lucide-react'
 
 export const ProjectsPage = () => {
@@ -48,8 +48,8 @@ export const ProjectsPage = () => {
   const handleSave = async (values: ProjectFormValues) => {
     try {
       const devNames = assignableDevs
-        .filter((d) => (values.developer_ids ?? []).includes(d.id))
-        .map((d) => d.full_name)
+        .filter((d: UserProfile) => (values.developer_ids ?? []).includes(d.id))
+        .map((d: UserProfile) => d.full_name)
       let projectId: string
       if (editingProject) {
         await updateProject({
@@ -286,7 +286,7 @@ function ProjectForm({
         status: status as Project['status'],
         revenue: Number(revenue) || 0,
         lead_id: lead_id || '',
-        assigned_developers: assignableDevs.filter((d) => developer_ids.includes(d.id)).map((d) => d.full_name).join(', '),
+        assigned_developers: assignableDevs.filter((d: UserProfile) => developer_ids.includes(d.id)).map((d: UserProfile) => d.full_name).join(', '),
         developer_ids,
         start_date: start_date || '',
         end_date: end_date || '',
@@ -342,7 +342,7 @@ function ProjectForm({
           {assignableDevs.length === 0 ? (
             <p className="text-sm text-muted-foreground">No developers in your team. Add developers from Team and assign a manager.</p>
           ) : (
-            assignableDevs.map((d) => (
+            assignableDevs.map((d: UserProfile) => (
               <label key={d.id} className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"

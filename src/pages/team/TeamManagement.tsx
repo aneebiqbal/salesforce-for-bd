@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
 import { useAuth } from '@/hooks/useAuth'
-import { useTeamMembers, useAssignableMembers, useUpdateMemberRole, useToggleMemberActive, useUpdateMemberManager } from '@/hooks/useTeam'
+import { useTeamMembers, useUpdateMemberRole, useToggleMemberActive, useUpdateMemberManager } from '@/hooks/useTeam'
 import { useActivities } from '@/hooks/useActivities'
 import { useProfiles } from '@/hooks/useProfiles'
 import type { UserRole } from '@/types'
@@ -32,7 +32,6 @@ export const TeamManagement = () => {
   const { user: currentUser } = useAuth()
   const { members, allMembers, isLoading } = useTeamMembers()
   const { profiles } = useProfiles(undefined)
-  const { members: assignableManagers } = useAssignableMembers() // managers for dropdown
   const { updateMemberRole, isUpdating } = useUpdateMemberRole()
   const { toggleMemberActive, isToggling } = useToggleMemberActive()
   const { updateMemberManager, isUpdating: isUpdatingManager } = useUpdateMemberManager()

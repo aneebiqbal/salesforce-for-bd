@@ -6,14 +6,13 @@ import { LogIn, LogOut, ListTodo, FolderKanban, Clock } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useDevTasks } from '@/hooks/useDevTasks'
 import { useDevAttendance } from '@/hooks/useDevAttendance'
-import { cn } from '@/lib/utils'
 
 export const DevDashboard = () => {
   const { user } = useAuth()
   const userId = user?.id ?? ''
   const today = new Date().toISOString().slice(0, 10)
 
-  const { record, isLoading: attendanceLoading, checkIn, checkOut, isCheckedIn } = useDevAttendance(userId, today)
+  const { record, isLoading: attendanceLoading, checkIn, checkOut } = useDevAttendance(userId, today)
   const { tasks, isLoading: tasksLoading } = useDevTasks(userId)
 
   const pendingTasks = (tasks ?? []).filter((t) => !t.completed_at)

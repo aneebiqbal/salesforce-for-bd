@@ -18,12 +18,14 @@ const TYPE_ICONS: Record<NotificationType, typeof ClipboardList> = {
   task_assigned: ClipboardList,
   lead_assigned: UserPlus,
   profile_assigned: Briefcase,
+  dev_task_assigned: ClipboardList,
 }
 
 const TYPE_LABELS: Record<NotificationType, string> = {
   task_assigned: 'Task assigned',
   lead_assigned: 'Lead assigned',
   profile_assigned: 'Account assigned',
+  dev_task_assigned: 'Dev task assigned',
 }
 
 function formatTime(iso: string) {

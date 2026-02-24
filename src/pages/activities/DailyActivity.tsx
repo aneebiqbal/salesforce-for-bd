@@ -43,9 +43,8 @@ export const DailyActivity = () => {
   const firstProfile = profiles?.[0]
   const { checkIn, checkOut, isCheckingOut, autoCheckOutPreviousSession } = useCheckIn(
     showTeamStatusOnly ? undefined : user?.id,
-    user?.id,
     activityDate,
-    firstProfile?.id ?? null,
+    firstProfile?.id ?? undefined,
     firstProfile?.platform_id ?? undefined
   )
 
