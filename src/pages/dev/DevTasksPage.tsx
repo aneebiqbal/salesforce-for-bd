@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -115,12 +115,14 @@ function BoardColumn({
   onMoveStatus,
   isDeveloper,
   devName,
+  getDevName,
 }: {
   status: DevTaskStatus
   tasks: DevTask[]
   onMoveStatus: (taskId: string, status: DevTaskStatus) => void
   isDeveloper: boolean
   devName?: string
+  getDevName?: (task: DevTask) => string
 }) {
   const config = DEV_TASK_STATUSES.find((s) => s.value === status) ?? { label: status, value: status }
   return (
@@ -138,7 +140,7 @@ function BoardColumn({
             task={t}
             onMoveStatus={onMoveStatus}
             isDeveloper={isDeveloper}
-            devName={devName}
+            devName={getDevName ? getDevName(t) : devName}
           />
         ))}
       </div>
@@ -161,30 +163,59 @@ export const DevTasksPage = () => {
 
   const { devs } = useAssignableDevs()
   const { projects } = useProjects()
+  const [viewMode, setViewMode] = useState<'by_developer' | 'by_project'>('by_project')
+  const [selectedProjectId, setSelectedProjectId] = useState<string>('__all__')
+
+  const effectiveDevId = isManager ? (selectedDevId || devs[0]?.id || '') : userId
   const { tasks, isLoading, createTask, updateStatus } = useDevTasks(
-    isDeveloper ? userId : selectedDevId || undefined
+    isDeveloper ? userId : (viewMode === 'by_developer' && effectiveDevId ? effectiveDevId : undefined)
   )
+  const allTasksForManager = useDevTasks(undefined)
+  const allTasks = isManager ? (allTasksForManager.tasks ?? []) : []
+
+  const tasksToShow = useMemo(() => {
+    if (isDeveloper) return tasks ?? []
+    if (viewMode === 'by_developer' && effectiveDevId) return tasks ?? []
+    if (viewMode === 'by_project') {
+      let list = allTasks
+      if (selectedProjectId === '__none__') list = list.filter((t) => !t.project_id)
+      else if (selectedProjectId !== '__all__') list = list.filter((t) => t.project_id === selectedProjectId)
+      return list
+    }
+    return allTasks
+  }, [isDeveloper, viewMode, effectiveDevId, selectedProjectId, tasks, allTasks])
 
   const tasksByStatus = useMemo(() => {
     const map = new Map<DevTaskStatus, DevTask[]>()
     for (const s of DEV_TASK_STATUSES) map.set(s.value, [])
-    for (const t of tasks ?? []) {
+    for (const t of tasksToShow) {
       const status = (t.status ?? 'backlog') as DevTaskStatus
       const list = map.get(status) ?? []
       list.push(t)
       map.set(status, list)
     }
     return map
-  }, [tasks])
+  }, [tasksToShow])
+
+  const projectOptions = useMemo(() => {
+    const ids = new Set<string>()
+    for (const t of allTasks) if (t.project_id) ids.add(t.project_id)
+    return (projects ?? []).filter((p) => ids.has(p.id))
+  }, [allTasks, projects])
+
+  const getDevName = useMemo(() => {
+    return (task: DevTask) => devs.find((d) => d.id === task.dev_id)?.full_name ?? '—'
+  }, [devs])
 
   const handleCreateTask = async () => {
-    if (!isManager || !selectedDevId || !newTitle.trim()) {
+    const devToAssign = selectedDevId || effectiveDevId
+    if (!isManager || !devToAssign || !newTitle.trim()) {
       toast.error('Select a developer and enter a title')
       return
     }
     try {
       const payload: DevTaskInsert = {
-        dev_id: selectedDevId,
+        dev_id: devToAssign,
         assigned_by: userId,
         project_id: newProjectId || null,
         title: newTitle.trim(),
@@ -212,8 +243,8 @@ export const DevTasksPage = () => {
   }
 
   const selectedDevName = useMemo(
-    () => devs.find((d: UserProfile) => d.id === selectedDevId)?.full_name,
-    [devs, selectedDevId]
+    () => devs.find((d: UserProfile) => d.id === effectiveDevId)?.full_name,
+    [devs, effectiveDevId]
   )
 
   if (isDeveloper) {
@@ -278,7 +309,7 @@ export const DevTasksPage = () => {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Dev Task Board</h1>
           <p className="text-muted-foreground">
-            Assign tasks and watch tickets move. Select a developer to see their board.
+            View tasks by project or by developer. Assign tasks and watch tickets move.
           </p>
         </div>
         <Button onClick={() => setDialogOpen(true)} className="gap-2 shrink-0">
@@ -287,16 +318,40 @@ export const DevTasksPage = () => {
         </Button>
       </div>
 
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">Developer</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Select
-            value={selectedDevId || (devs[0]?.id ?? '')}
-            onValueChange={setSelectedDevId}
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="flex items-center gap-2 rounded-lg border bg-muted/30 p-1">
+          <button
+            type="button"
+            onClick={() => setViewMode('by_project')}
+            className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${viewMode === 'by_project' ? 'bg-background shadow' : 'text-muted-foreground hover:text-foreground'}`}
           >
-            <SelectTrigger className="w-full max-w-xs">
+            By project
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('by_developer')}
+            className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${viewMode === 'by_developer' ? 'bg-background shadow' : 'text-muted-foreground hover:text-foreground'}`}
+          >
+            By developer
+          </button>
+        </div>
+        {viewMode === 'by_project' && (
+          <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
+            <SelectTrigger className="w-[220px]">
+              <SelectValue placeholder="Project" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">All projects</SelectItem>
+              <SelectItem value="__none__">No project</SelectItem>
+              {projectOptions.map((p) => (
+                <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        {viewMode === 'by_developer' && (
+          <Select value={effectiveDevId} onValueChange={setSelectedDevId}>
+            <SelectTrigger className="w-[220px]">
               <SelectValue placeholder="Choose a developer" />
             </SelectTrigger>
             <SelectContent>
@@ -310,22 +365,22 @@ export const DevTasksPage = () => {
               ))}
             </SelectContent>
           </Select>
-          {devs.length === 0 && (
-            <p className="mt-2 text-sm text-muted-foreground">
-              No developers in your team. Assign developers to yourself from Team.
-            </p>
-          )}
-        </CardContent>
-      </Card>
+        )}
+      </div>
+      {devs.length === 0 && viewMode === 'by_developer' && (
+        <p className="text-sm text-muted-foreground">
+          No developers in your team. Assign developers from Team, or use <strong>By project</strong> to see all tasks.
+        </p>
+      )}
 
-      {selectedDevId && (
+      {(viewMode === 'by_project' || effectiveDevId) && (
         <>
-          {(tasks?.length ?? 0) >= DEV_TASKS_PAGE_SIZE && (
+          {(viewMode === 'by_project' ? allTasks.length : (tasks?.length ?? 0)) >= DEV_TASKS_PAGE_SIZE && (
             <p className="text-xs text-muted-foreground">
-              Showing latest {DEV_TASKS_PAGE_SIZE} tasks for this developer.
+              Showing latest {DEV_TASKS_PAGE_SIZE} tasks.
             </p>
           )}
-          {isLoading ? (
+          {(viewMode === 'by_project' ? allTasksForManager.isLoading : isLoading) ? (
             <div className="flex gap-3 overflow-x-auto pb-2">
               {[1, 2, 3, 4, 5, 6].map((i) => (
                 <Skeleton key={i} className="h-64 w-64 shrink-0 rounded-lg" />
@@ -340,7 +395,8 @@ export const DevTasksPage = () => {
                   tasks={tasksByStatus.get(s.value) ?? []}
                   onMoveStatus={() => {}}
                   isDeveloper={false}
-                  devName={selectedDevName}
+                  devName={viewMode === 'by_developer' ? selectedDevName : undefined}
+                  getDevName={viewMode === 'by_project' ? getDevName : undefined}
                 />
               ))}
             </div>
@@ -356,7 +412,7 @@ export const DevTasksPage = () => {
           <div className="space-y-4 py-4">
             <div>
               <Label>Developer</Label>
-              <Select value={selectedDevId} onValueChange={setSelectedDevId}>
+              <Select value={selectedDevId || effectiveDevId} onValueChange={setSelectedDevId}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select developer" />
                 </SelectTrigger>
@@ -411,7 +467,7 @@ export const DevTasksPage = () => {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleCreateTask} disabled={!newTitle.trim() || !selectedDevId}>
+            <Button onClick={handleCreateTask} disabled={!newTitle.trim() || !(selectedDevId || effectiveDevId)}>
               Assign task
             </Button>
           </DialogFooter>

@@ -37,9 +37,9 @@ export const useBDPerformance = () => {
 
       const { data: allProfiles } = await supabase.from('user_profiles').select('id, full_name, email, manager_id').in('role', ['super_admin', 'bd_manager', 'bd'])
       let profiles = (allProfiles ?? []) as { id: string; full_name: string; email: string; manager_id: string | null }[]
-      if (isBdManager(user)) {
+      if (user && isBdManager(user)) {
         profiles = profiles.filter((p) => p.manager_id === user.id || p.id === user.id)
-      } else if (isBd(user)) {
+      } else if (user && isBd(user)) {
         profiles = profiles.filter((p) => p.id === user.id)
       }
       const byMember: Record<string, BDPerformanceRow> = {}

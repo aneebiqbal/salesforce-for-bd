@@ -214,7 +214,7 @@ export const TeamManagement = () => {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {isSuperAdmin && <SelectItem value="super_admin">Super Admin</SelectItem>}
+                          {_isSuperAdmin && <SelectItem value="super_admin">Super Admin</SelectItem>}
                           <SelectItem value="bd_manager">BD Manager</SelectItem>
                           <SelectItem value="bd">BD</SelectItem>
                           <SelectItem value="developer">Developer</SelectItem>
