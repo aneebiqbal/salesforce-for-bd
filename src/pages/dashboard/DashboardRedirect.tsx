@@ -13,8 +13,11 @@ export const DashboardRedirect = () => {
   }
   if (!user) return null
 
-  if (user.role === 'admin') {
+  if (user.role === 'super_admin') {
     return <Navigate to="/dashboard/admin" replace />
+  }
+  if (user.role === 'developer') {
+    return <Navigate to="/dashboard/dev" replace />
   }
   return <Navigate to="/dashboard/bd" replace />
 }

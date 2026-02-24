@@ -479,6 +479,8 @@ function ActivityDetailRow({
   if ((activity.proposals_sent ?? 0) > 0) parts.push(`${activity.proposals_sent} proposals`)
   if ((activity.connects_used ?? 0) > 0) parts.push(`${activity.connects_used} connects`)
   if ((activity.easy_applies ?? 0) > 0) parts.push(`${activity.easy_applies} easy applies`)
+  if ((activity.direct_applies ?? 0) > 0) parts.push(`${activity.direct_applies} direct applies`)
+  if ((activity.indeed_applies ?? 0) > 0) parts.push(`${activity.indeed_applies} indeed applies`)
   if ((activity.connection_requests ?? 0) > 0) parts.push(`${activity.connection_requests} connections`)
   if ((activity.dms_sent ?? 0) > 0) parts.push(`${activity.dms_sent} DMs`)
   if ((activity.emails_sent ?? 0) > 0) parts.push(`${activity.emails_sent} emails`)

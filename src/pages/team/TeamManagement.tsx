@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
 import { useAuth } from '@/hooks/useAuth'
-import { useTeamMembers, useUpdateMemberRole, useToggleMemberActive } from '@/hooks/useTeam'
+import { useTeamMembers, useAssignableMembers, useUpdateMemberRole, useToggleMemberActive, useUpdateMemberManager } from '@/hooks/useTeam'
 import { useActivities } from '@/hooks/useActivities'
 import { useProfiles } from '@/hooks/useProfiles'
 import type { UserRole } from '@/types'
@@ -30,12 +30,15 @@ function initials(name: string): string {
 
 export const TeamManagement = () => {
   const { user: currentUser } = useAuth()
-  const { members, isLoading } = useTeamMembers()
+  const { members, allMembers, isLoading } = useTeamMembers()
   const { profiles } = useProfiles(undefined)
+  const { members: assignableManagers } = useAssignableMembers() // managers for dropdown
   const { updateMemberRole, isUpdating } = useUpdateMemberRole()
   const { toggleMemberActive, isToggling } = useToggleMemberActive()
+  const { updateMemberManager, isUpdating: isUpdatingManager } = useUpdateMemberManager()
   const [changingRoleId, setChangingRoleId] = useState<string | null>(null)
   const [togglingId, setTogglingId] = useState<string | null>(null)
+  const [changingManagerId, setChangingManagerId] = useState<string | null>(null)
 
   const profileCountByMember = useMemo(() => {
     const map = new Map<string, number>()
@@ -45,7 +48,14 @@ export const TeamManagement = () => {
     return map
   }, [profiles])
 
-  const adminCount = useMemo(() => members.filter((m) => m.role === 'admin').length, [members])
+  const superAdminCount = useMemo(() => members.filter((m) => m.role === 'super_admin').length, [members])
+  const isSuperAdmin = currentUser?.role === 'super_admin'
+  const isBdManager = currentUser?.role === 'bd_manager'
+  const managerOptions = useMemo(() => {
+    if (isSuperAdmin) return allMembers.filter((m) => m.role === 'super_admin' || m.role === 'bd_manager')
+    if (isBdManager && currentUser) return [currentUser]
+    return []
+  }, [isSuperAdmin, isBdManager, currentUser, allMembers])
 
   const { activities: allActivities } = useActivities()
   const lastActiveDateByMember = useMemo(() => {
@@ -62,10 +72,9 @@ export const TeamManagement = () => {
   const appUrl = typeof window !== 'undefined' ? window.location.origin : ''
 
   const handleRoleChange = async (userId: string, role: UserRole) => {
-    // Prevent demoting the last admin
     const currentMember = members.find((m) => m.id === userId)
-    if (currentMember?.role === 'admin' && role !== 'admin' && adminCount <= 1) {
-      toast.error('Cannot demote the last admin. Assign another admin first.')
+    if (currentMember?.role === 'super_admin' && role !== 'super_admin' && superAdminCount <= 1) {
+      toast.error('Cannot demote the last super admin. Assign another super admin first.')
       return
     }
     setChangingRoleId(userId)
@@ -76,6 +85,18 @@ export const TeamManagement = () => {
       toast.error(e instanceof Error ? e.message : 'Failed to update role')
     } finally {
       setChangingRoleId(null)
+    }
+  }
+
+  const handleManagerChange = async (userId: string, managerId: string | null) => {
+    setChangingManagerId(userId)
+    try {
+      await updateMemberManager({ userId, managerId })
+      toast.success('Manager updated')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to update manager')
+    } finally {
+      setChangingManagerId(null)
     }
   }
 
@@ -187,18 +208,39 @@ export const TeamManagement = () => {
                       <Select
                         value={member.role}
                         onValueChange={(v) => handleRoleChange(member.id, v as UserRole)}
-                        disabled={(isUpdating && changingRoleId === member.id) || (member.role === 'admin' && adminCount <= 1)}
+                        disabled={(isUpdating && changingRoleId === member.id) || (member.role === 'super_admin' && superAdminCount <= 1)}
                       >
                         <SelectTrigger className="h-8 flex-1">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="admin">Admin</SelectItem>
+                          {isSuperAdmin && <SelectItem value="super_admin">Super Admin</SelectItem>}
                           <SelectItem value="bd_manager">BD Manager</SelectItem>
-                          <SelectItem value="staff">Staff</SelectItem>
+                          <SelectItem value="bd">BD</SelectItem>
+                          <SelectItem value="developer">Developer</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
+                    {(isSuperAdmin || isBdManager) && (member.role === 'bd' || member.role === 'developer') && managerOptions.length > 0 && (
+                      <div className="flex items-center gap-2">
+                        <Label className="text-xs text-muted-foreground shrink-0">Manager</Label>
+                        <Select
+                          value={member.manager_id ?? '__none__'}
+                          onValueChange={(v) => handleManagerChange(member.id, v === '__none__' ? null : v)}
+                          disabled={isUpdatingManager && changingManagerId === member.id}
+                        >
+                          <SelectTrigger className="h-8 flex-1">
+                            <SelectValue placeholder="No manager" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__none__">No manager</SelectItem>
+                            {managerOptions.map((m) => (
+                              <SelectItem key={m.id} value={m.id}>{m.full_name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                     {!self && (
                       <Button
                         variant="outline"

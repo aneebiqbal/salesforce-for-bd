@@ -30,6 +30,7 @@ const dailyActivitySchema = z.object({
   easy_applies: z.coerce.number().min(0),
   connection_requests: z.coerce.number().min(0),
   direct_applies: z.coerce.number().min(0),
+  indeed_applies: z.coerce.number().min(0),
   dms_sent: z.coerce.number().min(0),
   fetched_emails: z.coerce.number().min(0),
   inmail_sent: z.coerce.number().min(0),
@@ -66,6 +67,7 @@ export const DailyActivityForm = ({ onSubmit, platforms, profiles, bdMemberId }:
       easy_applies: 0,
       connection_requests: 0,
       direct_applies: 0,
+      indeed_applies: 0,
       dms_sent: 0,
       fetched_emails: 0,
       inmail_sent: 0,
@@ -102,6 +104,7 @@ export const DailyActivityForm = ({ onSubmit, platforms, profiles, bdMemberId }:
       easy_applies: existingActivity.easy_applies,
       connection_requests: existingActivity.connection_requests,
       direct_applies: existingActivity.direct_applies,
+      indeed_applies: existingActivity.indeed_applies,
       dms_sent: existingActivity.dms_sent,
       fetched_emails: existingActivity.fetched_emails,
       inmail_sent: existingActivity.inmail_sent,
@@ -142,6 +145,7 @@ export const DailyActivityForm = ({ onSubmit, platforms, profiles, bdMemberId }:
     easy_applies: data.easy_applies,
     connection_requests: data.connection_requests,
     direct_applies: data.direct_applies,
+    indeed_applies: data.indeed_applies,
     dms_sent: data.dms_sent,
     fetched_emails: data.fetched_emails,
     inmail_sent: data.inmail_sent,
@@ -225,16 +229,20 @@ export const DailyActivityForm = ({ onSubmit, platforms, profiles, bdMemberId }:
       {selectedPlatform?.name === 'linkedin' && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <div className="space-y-2">
-            <Label>Easy applies</Label>
+            <Label>Easy applies (LinkedIn)</Label>
             <Input type="number" min={0} {...form.register('easy_applies')} />
+          </div>
+          <div className="space-y-2">
+            <Label>Direct applies (full applications)</Label>
+            <Input type="number" min={0} {...form.register('direct_applies')} />
+          </div>
+          <div className="space-y-2">
+            <Label>Indeed applies</Label>
+            <Input type="number" min={0} {...form.register('indeed_applies')} />
           </div>
           <div className="space-y-2">
             <Label>Connection requests</Label>
             <Input type="number" min={0} {...form.register('connection_requests')} />
-          </div>
-          <div className="space-y-2">
-            <Label>Direct applies</Label>
-            <Input type="number" min={0} {...form.register('direct_applies')} />
           </div>
           <div className="space-y-2">
             <Label>DMs sent</Label>

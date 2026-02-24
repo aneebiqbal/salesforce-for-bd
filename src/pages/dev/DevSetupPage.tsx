@@ -8,10 +8,11 @@ import { supabase } from '@/lib/supabase'
 const isDev = import.meta.env.DEV
 
 const TEST_USERS = [
-  { email: 'admin@bdforce.com', password: 'admin123456', role: 'admin' as const, fullName: 'Admin' },
+  { email: 'admin@bdforce.com', password: 'admin123456', role: 'super_admin' as const, fullName: 'Super Admin' },
   { email: 'aneeb@bdforce.com', password: 'test123456', role: 'bd_manager' as const, fullName: 'Aneeb' },
   { email: 'zaira@bdforce.com', password: 'test123456', role: 'bd_manager' as const, fullName: 'Zaira' },
   { email: 'fizza@bdforce.com', password: 'test123456', role: 'bd_manager' as const, fullName: 'Fizza' },
+  { email: 'dev@bdforce.com', password: 'test123456', role: 'developer' as const, fullName: 'Dev User' },
 ]
 
 export const DevSetupPage = () => {
@@ -125,6 +126,7 @@ export const DevSetupPage = () => {
             easy_applies: Math.floor(Math.random() * 25),
             connection_requests: Math.floor(Math.random() * 20),
             direct_applies: Math.floor(Math.random() * 5),
+            indeed_applies: Math.floor(Math.random() * 8),
             dms_sent: Math.floor(Math.random() * 15),
             fetched_emails: Math.floor(Math.random() * 10),
             inmail_sent: Math.floor(Math.random() * 5),
@@ -160,7 +162,7 @@ export const DevSetupPage = () => {
       const [{ data: platforms }, { data: profiles }, { data: users }] = await Promise.all([
         supabase.from('platforms').select('id').limit(1),
         supabase.from('profiles').select('id, bd_member_id').limit(5),
-        supabase.from('user_profiles').select('id').in('role', ['admin', 'bd_manager']),
+        supabase.from('user_profiles').select('id').in('role', ['super_admin', 'bd_manager']),
       ])
       const platformId = platforms?.[0]?.id
       const profileId = profiles?.[0]?.id
@@ -217,7 +219,7 @@ export const DevSetupPage = () => {
     setLoading('targets')
     setLog((prev) => [...prev, '--- Seeding targets ---'])
     try {
-      const { data: users } = await supabase.from('user_profiles').select('id').in('role', ['bd_manager', 'admin'])
+      const { data: users } = await supabase.from('user_profiles').select('id').in('role', ['bd_manager', 'super_admin'])
       const { data: platforms } = await supabase.from('platforms').select('id').limit(1)
       if (!users?.length) throw new Error('No BD members.')
       const platformId = platforms?.[0]?.id ?? null

@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/hooks/useAuth'
 
-export const BD_PERFORMANCE_QUERY_KEY = ['admin', 'bd-performance']
+export const BD_PERFORMANCE_QUERY_KEY = ['bd-performance']
 
 export interface BDPerformanceRow {
   bd_member_id: string
@@ -18,13 +19,14 @@ export interface BDPerformanceRow {
 }
 
 export const useBDPerformance = () => {
+  const { user } = useAuth()
   const startOfMonth = new Date()
   startOfMonth.setDate(1)
   startOfMonth.setHours(0, 0, 0, 0)
   const monthStart = startOfMonth.toISOString().slice(0, 10)
 
   const { data: rows = [], isLoading } = useQuery({
-    queryKey: [...BD_PERFORMANCE_QUERY_KEY, monthStart],
+    queryKey: [...BD_PERFORMANCE_QUERY_KEY, monthStart, user?.id, user?.role],
     queryFn: async (): Promise<BDPerformanceRow[]> => {
       const { data: activities, error: actErr } = await supabase
         .from('daily_activities')
@@ -32,9 +34,15 @@ export const useBDPerformance = () => {
         .gte('activity_date', monthStart)
       if (actErr) throw actErr
 
-      const { data: profiles } = await supabase.from('user_profiles').select('id, full_name, email').in('role', ['admin', 'bd_manager'])
+      const { data: allProfiles } = await supabase.from('user_profiles').select('id, full_name, email, manager_id').in('role', ['super_admin', 'bd_manager', 'bd'])
+      let profiles = (allProfiles ?? []) as { id: string; full_name: string; email: string; manager_id: string | null }[]
+      if (user?.role === 'bd_manager') {
+        profiles = profiles.filter((p) => p.manager_id === user.id || p.id === user.id)
+      } else if (user?.role === 'bd') {
+        profiles = profiles.filter((p) => p.id === user.id)
+      }
       const byMember: Record<string, BDPerformanceRow> = {}
-      for (const p of profiles ?? []) {
+      for (const p of profiles) {
         byMember[p.id] = {
           bd_member_id: p.id,
           bd_member_name: p.full_name ?? '',
@@ -65,7 +73,7 @@ export const useBDPerformance = () => {
       }
       return Object.values(byMember).filter((r) => r.bd_member_name)
     },
-    enabled: true,
+    enabled: !!user,
   })
 
   return { data: rows, isLoading }

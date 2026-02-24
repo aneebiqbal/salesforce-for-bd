@@ -36,7 +36,9 @@ const FILTER_ALL = '__all__'
 
 export const ProfilesManagement = () => {
   const { user } = useAuth()
-  const isAdmin = user?.role === 'admin'
+  const isSuperAdmin = user?.role === 'super_admin'
+  const isBdManager = user?.role === 'bd_manager'
+  const canManageProfiles = isSuperAdmin || isBdManager
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingProfile, setEditingProfile] = useState<ProfileWithPlatform | null>(null)
   const [platformFilter, setPlatformFilter] = useState<string>(FILTER_ALL)
@@ -90,7 +92,7 @@ export const ProfilesManagement = () => {
           id: editingProfile.id,
           payload: { name: values.name, platform_id: values.platform_id, bd_member_id: assigneeId, status: values.status, notes: values.notes || null },
         })
-        if (isAdmin && assigneeId && assigneeId !== previousAssignee && assigneeId !== user?.id) {
+        if (canManageProfiles && assigneeId && assigneeId !== previousAssignee && assigneeId !== user?.id) {
           await createNotification({
             user_id: assigneeId,
             type: 'profile_assigned',
@@ -108,7 +110,7 @@ export const ProfilesManagement = () => {
           status: values.status,
           notes: values.notes || null,
         })
-        if (isAdmin && assigneeId && assigneeId !== user?.id) {
+        if (canManageProfiles && assigneeId && assigneeId !== user?.id) {
           await createNotification({
             user_id: assigneeId,
             type: 'profile_assigned',
@@ -164,7 +166,7 @@ export const ProfilesManagement = () => {
           <h1 className="text-2xl font-semibold tracking-tight">Profiles</h1>
           <p className="text-muted-foreground">Manage platform profiles. Assign to BD members.</p>
         </div>
-        {isAdmin && (
+        {canManageProfiles && (
           <Dialog open={dialogOpen} onOpenChange={(open) => !open && handleCloseDialog()}>
             <DialogTrigger asChild>
               <Button onClick={() => handleOpenDialog()}>Add Profile</Button>
@@ -228,7 +230,7 @@ export const ProfilesManagement = () => {
             <p className="text-sm text-muted-foreground">
               {profiles?.length === 0 ? 'No profiles yet. Add profiles to start tracking activity.' : 'No profiles match the current filters.'}
             </p>
-            {isAdmin && profiles?.length === 0 && (
+            {canManageProfiles && profiles?.length === 0 && (
               <Button className="mt-3" onClick={() => handleOpenDialog()}>Add Profile</Button>
             )}
           </CardContent>
@@ -258,7 +260,7 @@ export const ProfilesManagement = () => {
                   <p className="text-xs text-muted-foreground">
                     {activityCountByProfile.get(profile.id) ?? 0} day{(activityCountByProfile.get(profile.id) ?? 0) !== 1 ? 's' : ''} of activity logged
                   </p>
-                  {isAdmin && (
+                  {canManageProfiles && (
                     <div className="mt-auto flex items-center gap-2 pt-2">
                       <Button variant="outline" size="sm" className="flex-1" onClick={() => handleOpenDialog(profile)}>
                         <Pencil className="size-3.5 mr-1" /> Edit

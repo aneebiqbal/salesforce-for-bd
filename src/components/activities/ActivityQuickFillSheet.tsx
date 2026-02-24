@@ -51,6 +51,7 @@ const defaultNumbers = {
   easy_applies: 0,
   connection_requests: 0,
   direct_applies: 0,
+  indeed_applies: 0,
   dms_sent: 0,
   fetched_emails: 0,
   inmail_sent: 0,
@@ -82,6 +83,7 @@ function getInitialState(existing: DailyActivity | null): FormState {
     easy_applies: existing?.easy_applies ?? 0,
     connection_requests: existing?.connection_requests ?? 0,
     direct_applies: existing?.direct_applies ?? 0,
+    indeed_applies: existing?.indeed_applies ?? 0,
     dms_sent: existing?.dms_sent ?? 0,
     fetched_emails: existing?.fetched_emails ?? 0,
     inmail_sent: existing?.inmail_sent ?? 0,
@@ -259,7 +261,7 @@ export const ActivityQuickFillSheet = ({
           {y && (
             <p className="text-xs text-muted-foreground rounded-md bg-muted px-3 py-2 mt-2">
               {isUpwork && `Yesterday: ${y.proposals_sent} proposals · ${y.connects_used} connects · ${y.warmup_messages} warmup msgs`}
-              {isLinkedIn && `Yesterday: ${y.easy_applies} applies · ${y.connection_requests} connection reqs · ${y.dms_sent} DMs`}
+              {isLinkedIn && `Yesterday: ${y.easy_applies} easy · ${y.direct_applies} direct · ${y.indeed_applies ?? 0} indeed applies · ${y.connection_requests} connections · ${y.dms_sent} DMs`}
               {isColdEmail && `Yesterday: ${y.emails_sent} emails sent · ${y.meetings_booked} meetings booked`}
             </p>
           )}
@@ -297,7 +299,7 @@ export const ActivityQuickFillSheet = ({
                     value={state.connects_used}
                     onChange={(v) => setState((s) => ({ ...s, connects_used: v }))}
                     placeholder={y?.connects_used}
-                    hint={<span className="text-muted-foreground">Credits spent submitting proposals</span>}
+                    hint={<span className="text-muted-foreground">Credits spent — tracked but not counted as actions</span>}
                   />
                   <NumberStepper
                     label="Warmup Messages Sent"
@@ -341,6 +343,13 @@ export const ActivityQuickFillSheet = ({
                     onChange={(v) => setState((s) => ({ ...s, direct_applies: v }))}
                     placeholder={y?.direct_applies}
                     hint={<span className="text-muted-foreground">Full applications on company sites — more targeted, higher quality</span>}
+                  />
+                  <NumberStepper
+                    label="Indeed Applies"
+                    value={state.indeed_applies}
+                    onChange={(v) => setState((s) => ({ ...s, indeed_applies: v }))}
+                    placeholder={y?.indeed_applies}
+                    hint={<span className="text-muted-foreground">Applications on Indeed or other job boards — counted as actions</span>}
                   />
                   <NumberStepper
                     label="Connection Requests Sent"

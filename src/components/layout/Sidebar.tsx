@@ -12,6 +12,7 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
+  ListTodo,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -21,17 +22,24 @@ import { useAuth } from '@/hooks/useAuth'
 import { useIncompleteWork } from '@/hooks/useIncompleteWork'
 import { Separator } from '@/components/ui/separator'
 
-const navItems: { to: string; label: string; sublabel: string; icon: typeof LayoutDashboard; adminOnly?: boolean }[] = [
+const navItems: { to: string; label: string; sublabel: string; icon: typeof LayoutDashboard; managerOrSuperAdminOnly?: boolean }[] = [
   { to: '/dashboard', label: 'Dashboard', sublabel: 'Your daily overview', icon: LayoutDashboard },
   { to: '/activities', label: 'Log Activity', sublabel: 'Fill today\'s numbers', icon: CalendarCheck },
   { to: '/activities/log', label: 'Activity History', sublabel: 'Past logged days', icon: History },
   { to: '/leads', label: 'Leads Pipeline', sublabel: 'Track prospects', icon: Kanban },
   { to: '/profiles', label: 'Accounts', sublabel: 'Managed profiles', icon: Users },
-  { to: '/team', label: 'Team Members', sublabel: 'Manage BD team', icon: UserCog, adminOnly: true },
+  { to: '/team', label: 'Team Members', sublabel: 'Manage BD team', icon: UserCog, managerOrSuperAdminOnly: true },
   { to: '/targets', label: 'Goals & Targets', sublabel: 'Performance targets', icon: Target },
   { to: '/projects', label: 'Projects', sublabel: 'Won projects', icon: FolderKanban },
+  { to: '/dev/tasks', label: 'Assign Dev Tasks', sublabel: 'Assign tasks to developers', icon: ListTodo, managerOrSuperAdminOnly: true },
   { to: '/reports', label: 'Reports', sublabel: 'Analytics & export', icon: BarChart3 },
-  { to: '/settings', label: 'Settings', sublabel: 'Account & appearance', icon: Settings },
+  { to: '/settings', label: 'Settings', sublabel: 'Account & appearance', icon: Settings, managerOrSuperAdminOnly: true },
+]
+
+const devNavItems: { to: string; label: string; sublabel: string; icon: typeof LayoutDashboard }[] = [
+  { to: '/dashboard', label: 'Dashboard', sublabel: 'Check-in & overview', icon: LayoutDashboard },
+  { to: '/dev/tasks', label: 'My Tasks', sublabel: 'Tasks assigned to you', icon: ListTodo },
+  { to: '/projects', label: 'Projects', sublabel: 'Assigned projects', icon: FolderKanban },
 ]
 
 export const Sidebar = () => {
@@ -39,13 +47,17 @@ export const Sidebar = () => {
   const { user } = useAuth()
   const { sidebarOpen, toggleSidebar } = useUIStore()
   const incomplete = useIncompleteWork()
-  const isAdmin = user?.role === 'admin'
-  const items = navItems.filter((item) => !item.adminOnly || isAdmin)
+  const isSuperAdmin = user?.role === 'super_admin'
+  const canAccessManagerPages = user?.role === 'super_admin' || user?.role === 'bd_manager'
+  const isDeveloper = user?.role === 'developer'
+  const items = isDeveloper
+    ? devNavItems
+    : navItems.filter((item) => !item.managerOrSuperAdminOnly || canAccessManagerPages)
 
   const getBadge = (to: string) => {
-    if (to === '/dashboard' && !isAdmin && incomplete.incompleteCount > 0)
+    if (to === '/dashboard' && !isSuperAdmin && incomplete.incompleteCount > 0)
       return incomplete.incompleteCount
-    if (to === '/activities' && !isAdmin && incomplete.activityIncomplete) return '!'
+    if (to === '/activities' && user?.role === 'bd' && incomplete.activityIncomplete) return '!'
     if (to === '/targets' && incomplete.pendingTaskCount > 0) return incomplete.pendingTaskCount
     return null
   }

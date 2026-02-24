@@ -67,7 +67,7 @@ export const LeadsPipeline = () => {
   const { platforms } = usePlatforms()
   const { profiles } = useProfiles(undefined)
   const { members: assignableMembers } = useAssignableMembers()
-  const isAdmin = user?.role === 'admin'
+  const canAssignLeads = user?.role === 'super_admin' || user?.role === 'bd_manager'
 
   const leadsByStatus = useMemo(() => {
     const map = new Map<LeadStatus, Lead[]>()
@@ -112,7 +112,7 @@ export const LeadsPipeline = () => {
         follow_up_date: values.follow_up_date || null,
         last_contacted_at: values.last_contacted_at || null,
       })
-      if (isAdmin && assigneeId && assigneeId !== user?.id) {
+      if (canAssignLeads && assigneeId && assigneeId !== user?.id) {
         await createNotification({
           user_id: assigneeId,
           type: 'lead_assigned',
@@ -149,7 +149,7 @@ export const LeadsPipeline = () => {
           last_contacted_at: values.last_contacted_at || null,
         },
       })
-      if (isAdmin && assigneeId && assigneeId !== previousAssignee && assigneeId !== user?.id) {
+      if (canAssignLeads && assigneeId && assigneeId !== previousAssignee && assigneeId !== user?.id) {
         await createNotification({
           user_id: assigneeId,
           type: 'lead_assigned',

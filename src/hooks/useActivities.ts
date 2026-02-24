@@ -16,6 +16,7 @@ const defaultActivityRow = {
   easy_applies: 0,
   connection_requests: 0,
   direct_applies: 0,
+  indeed_applies: 0,
   dms_sent: 0,
   fetched_emails: 0,
   inmail_sent: 0,

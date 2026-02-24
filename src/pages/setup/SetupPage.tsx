@@ -66,7 +66,7 @@ export const SetupPage = () => {
       await signUp(data.email, data.password, data.fullName)
       const { data: { session } } = await supabase.auth.getSession()
       if (session?.user?.id) {
-        await supabase.rpc('promote_to_admin', { target_user_id: session.user.id })
+        await supabase.rpc('promote_to_super_admin', { target_user_id: session.user.id })
       }
       navigate('/dashboard', { replace: true })
     } catch (err) {
@@ -89,7 +89,7 @@ export const SetupPage = () => {
         <Card className="w-full max-w-sm">
           <CardHeader>
             <CardTitle>Already set up</CardTitle>
-            <CardDescription>An admin account already exists.</CardDescription>
+            <CardDescription>A super admin account already exists.</CardDescription>
           </CardHeader>
           <CardContent>
             <a href="/login" className="text-primary underline">
@@ -106,7 +106,7 @@ export const SetupPage = () => {
       <Card className="w-full min-w-0 max-w-sm shrink-0">
         <CardHeader>
           <CardTitle>One-time setup</CardTitle>
-          <CardDescription>Create the first admin account for BD Salesforce.</CardDescription>
+            <CardDescription>Create the first super admin account for BD Salesforce.</CardDescription>
         </CardHeader>
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <CardContent className="space-y-4">
@@ -169,7 +169,7 @@ export const SetupPage = () => {
           </CardContent>
           <CardFooter>
             <Button type="submit" className="w-full" disabled={submitting}>
-              {submitting ? 'Creating…' : 'Create admin account'}
+              {submitting ? 'Creating…' : 'Create super admin account'}
             </Button>
           </CardFooter>
         </form>

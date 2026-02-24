@@ -1,8 +1,10 @@
+import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/hooks/useAuth'
 import type { DailyActivity } from '@/types'
 
-export const TODAY_TEAM_STATUS_QUERY_KEY = ['admin', 'today-team-status']
+export const TODAY_TEAM_STATUS_QUERY_KEY = ['today-team-status']
 
 export interface TodayTeamStatusRow {
   bd_member_id: string
@@ -15,16 +17,24 @@ export interface TodayTeamStatusRow {
 }
 
 export const useTodayTeamStatus = () => {
+  const { user } = useAuth()
   const today = new Date().toISOString().slice(0, 10)
-  const { data, isLoading } = useQuery({
-    queryKey: [...TODAY_TEAM_STATUS_QUERY_KEY, today],
+  const { data: rawRows = [], isLoading } = useQuery({
+    queryKey: [...TODAY_TEAM_STATUS_QUERY_KEY, today, user?.id, user?.role],
     queryFn: async (): Promise<TodayTeamStatusRow[]> => {
-      const { data: bdUsers, error: e0 } = await supabase
+      const { data: allUsers, error: e0 } = await supabase
         .from('user_profiles')
-        .select('id, full_name')
-        .in('role', ['admin', 'bd_manager'])
+        .select('id, full_name, role, manager_id')
+        .in('role', ['super_admin', 'bd_manager', 'bd'])
       if (e0) throw e0
-      if (!bdUsers?.length) return []
+      if (!allUsers?.length) return []
+
+      let bdUsers = allUsers as { id: string; full_name: string; role: string; manager_id: string | null }[]
+      if (user?.role === 'bd_manager') {
+        bdUsers = bdUsers.filter((u) => u.manager_id === user.id || u.id === user.id)
+      } else if (user?.role === 'bd') {
+        bdUsers = bdUsers.filter((u) => u.id === user.id)
+      }
 
       const ids = bdUsers.map((u) => u.id)
 
@@ -77,7 +87,7 @@ export const useTodayTeamStatus = () => {
         }
       })
     },
-    enabled: true,
+    enabled: !!user,
   })
-  return { rows: data ?? [], isLoading }
+  return { rows: rawRows, isLoading }
 }

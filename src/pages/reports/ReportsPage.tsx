@@ -85,7 +85,7 @@ const tooltipStyle = {
 
 export const ReportsPage = () => {
   const { user } = useAuthContext()
-  const isAdmin = user?.role === 'admin'
+  const canSeeTeamReports = user?.role === 'super_admin' || user?.role === 'bd_manager'
 
   const [rangeStart, setRangeStart] = useState(QUICK_RANGES[2].start)
   const [rangeEnd, setRangeEnd] = useState(QUICK_RANGES[2].end)
@@ -274,7 +274,7 @@ export const ReportsPage = () => {
               className="h-8 rounded-md border border-input bg-background px-2 text-xs"
             />
           </div>
-          {isAdmin && (
+          {canSeeTeamReports && (
             <Select value={filterMemberId} onValueChange={setFilterMemberId}>
               <SelectTrigger className="h-8 w-44 text-xs">
                 <SelectValue placeholder="All BD members" />
@@ -451,7 +451,7 @@ export const ReportsPage = () => {
       )}
 
       {/* BD Performance table (admin only) */}
-      {isAdmin && (
+      {canSeeTeamReports && (
         <Card>
           <CardHeader>
             <CardTitle className="text-base">BD Performance — This Month</CardTitle>

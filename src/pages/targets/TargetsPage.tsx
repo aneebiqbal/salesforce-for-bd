@@ -59,7 +59,7 @@ const REPEAT_LABELS: Record<string, string> = {
 
 export const TargetsPage = () => {
   const { user } = useAuth()
-  const isAdmin = user?.role === 'admin'
+  const canManageTargets = user?.role === 'super_admin' || user?.role === 'bd_manager'
   const today = new Date().toISOString().slice(0, 10)
 
   // Targets state
@@ -70,12 +70,12 @@ export const TargetsPage = () => {
   const [taskDialogOpen, setTaskDialogOpen] = useState(false)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
 
-  const { targets, isLoading: targetsLoading, upsertTarget, deleteTarget } = useTargets(isAdmin ? undefined : user?.id)
+  const { targets, isLoading: targetsLoading, upsertTarget, deleteTarget } = useTargets(canManageTargets ? undefined : user?.id)
   const { platforms } = usePlatforms()
   const { members: assignableMembers } = useAssignableMembers()
 
   const { tasks, isLoading: tasksLoading, createTask, updateTask, deleteTask, toggleComplete } = useTasks(
-    isAdmin ? undefined : user?.id
+    canManageTargets ? undefined : user?.id
   )
 
   // Activities for target progress
@@ -179,7 +179,7 @@ export const TargetsPage = () => {
         await createTask(payload)
         toast.success('Task added')
       }
-      if (isAdmin && assigneeId && assigneeId !== user?.id) {
+      if (canManageTargets && assigneeId && assigneeId !== user?.id) {
         await createNotification({
           user_id: assigneeId,
           type: 'task_assigned',
@@ -245,7 +245,7 @@ export const TargetsPage = () => {
               </Button>
             </TabsContent>
             <TabsContent value="targets" className="mt-0">
-              {isAdmin && (
+              {canManageTargets && (
                 <Button size="sm" className="gap-2" onClick={() => { setEditingTarget(null); setTargetDialogOpen(true) }}>
                   <Plus className="size-4" /> Set Target
                 </Button>
@@ -346,12 +346,12 @@ export const TargetsPage = () => {
                 <div>
                   <p className="font-medium">No performance targets set</p>
                   <p className="text-sm text-muted-foreground mt-1">
-                    {isAdmin
+                    {canManageTargets
                       ? 'Set weekly or monthly targets for each BD member — proposals sent, leads created, etc.'
                       : 'Ask your admin to set performance targets for you.'}
                   </p>
                 </div>
-                {isAdmin && (
+                {canManageTargets && (
                   <Button size="sm" onClick={() => setTargetDialogOpen(true)}>
                     Set first target
                   </Button>
@@ -377,7 +377,7 @@ export const TargetsPage = () => {
                           current={currentValueByTarget.get(t.id) ?? 0}
                           metricLabel={metricLabel(t.metric)}
                           platformName={platformName(t.platform_id)}
-                          isAdmin={isAdmin}
+                          isAdmin={canManageTargets}
                           onEdit={() => { setEditingTarget(t); setTargetDialogOpen(true) }}
                           onDelete={() => handleDeleteTarget(t.id)}
                         />
@@ -389,7 +389,7 @@ export const TargetsPage = () => {
                           current={0}
                           metricLabel={metricLabel(t.metric)}
                           platformName={platformName(t.platform_id)}
-                          isAdmin={isAdmin}
+                          isAdmin={canManageTargets}
                           onEdit={() => { setEditingTarget(t); setTargetDialogOpen(true) }}
                           onDelete={() => handleDeleteTarget(t.id)}
                           isFuture
@@ -402,7 +402,7 @@ export const TargetsPage = () => {
                           current={currentValueByTarget.get(t.id) ?? 0}
                           metricLabel={metricLabel(t.metric)}
                           platformName={platformName(t.platform_id)}
-                          isAdmin={isAdmin}
+                          isAdmin={canManageTargets}
                           onEdit={() => { setEditingTarget(t); setTargetDialogOpen(true) }}
                           onDelete={() => handleDeleteTarget(t.id)}
                           isExpired
@@ -428,9 +428,9 @@ export const TargetsPage = () => {
           </DialogHeader>
           <TaskForm
             task={editingTask}
-            assignableMembers={isAdmin ? assignableMembers : []}
+            assignableMembers={canManageTargets ? assignableMembers : []}
             currentUserId={user?.id ?? ''}
-            isAdmin={isAdmin}
+            isAdmin={canManageTargets}
             onSave={handleSaveTask}
             onCancel={() => { setTaskDialogOpen(false); setEditingTask(null) }}
           />
@@ -644,7 +644,7 @@ function TargetCard({
             {isExpired && <Badge variant="secondary" className="text-xs">Expired</Badge>}
             {isFuture && <Badge variant="outline" className="text-xs">Upcoming</Badge>}
             {reached && !isExpired && <Badge className="text-xs bg-green-600">Reached ✓</Badge>}
-            {isAdmin && (
+            {canManageTargets && (
               <>
                 <button type="button" onClick={onEdit} className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
                   <Pencil className="size-3.5" />
@@ -794,7 +794,7 @@ function TaskForm({
         />
         <p className="text-xs text-muted-foreground">Leave blank for no deadline.</p>
       </div>
-      {isAdmin && assignableMembers.length > 0 && (
+      {canManageTargets && assignableMembers.length > 0 && (
         <div className="space-y-2">
           <Label>Assign to</Label>
           <Select value={bd_member_id} onValueChange={setBd_member_id}>

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -22,7 +22,10 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Link } from 'react-router'
+import { useAuth } from '@/hooks/useAuth'
 import { useProjects } from '@/hooks/useProjects'
+import { useProjectDevelopers } from '@/hooks/useProjectDevelopers'
+import { useAssignableDevs } from '@/hooks/useAssignableDevs'
 import { useLeads } from '@/hooks/useLeads'
 import { PROJECT_STATUSES } from '@/lib/constants'
 import { formatCurrency } from '@/lib/utils'
@@ -30,18 +33,24 @@ import type { Project } from '@/types'
 import { Pencil, Trash2 } from 'lucide-react'
 
 export const ProjectsPage = () => {
+  const { user } = useAuth()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingProject, setEditingProject] = useState<Project | null>(null)
 
+  const canCreateProjects = user?.role === 'super_admin' || user?.role === 'bd_manager'
+  const canEditOrDeleteProjects = user?.role === 'super_admin'
   const { projects, isLoading, createProject, updateProject, deleteProject } = useProjects()
+  const { syncDevelopers } = useProjectDevelopers(null)
+  const { devs: assignableDevs } = useAssignableDevs()
   const { leads, isLoading: leadsLoading } = useLeads()
   const wonLeads = (leads ?? []).filter((l) => l.status === 'won')
 
   const handleSave = async (values: ProjectFormValues) => {
     try {
-      const devs = values.assigned_developers
-        ? values.assigned_developers.split(',').map((s) => s.trim()).filter(Boolean)
-        : []
+      const devNames = assignableDevs
+        .filter((d) => (values.developer_ids ?? []).includes(d.id))
+        .map((d) => d.full_name)
+      let projectId: string
       if (editingProject) {
         await updateProject({
           id: editingProject.id,
@@ -50,24 +59,28 @@ export const ProjectsPage = () => {
           status: values.status,
           revenue: values.revenue,
           lead_id: values.lead_id || null,
-          assigned_developers: devs,
+          assigned_developers: devNames,
           start_date: values.start_date || null,
           end_date: values.end_date || null,
           notes: values.notes || null,
         })
+        projectId = editingProject.id
+        await syncDevelopers({ project_id: projectId, developer_ids: values.developer_ids ?? [] })
         toast.success('Project updated')
       } else {
-        await createProject({
+        const created = await createProject({
           name: values.name,
           client_name: values.client_name,
           status: values.status,
           revenue: values.revenue,
           lead_id: values.lead_id || null,
-          assigned_developers: devs,
+          assigned_developers: devNames,
           start_date: values.start_date || null,
           end_date: values.end_date || null,
           notes: values.notes || null,
         })
+        projectId = created.id
+        await syncDevelopers({ project_id: projectId, developer_ids: values.developer_ids ?? [] })
         toast.success('Project created')
       }
       setDialogOpen(false)
@@ -98,14 +111,16 @@ export const ProjectsPage = () => {
           <h1 className="text-2xl font-semibold tracking-tight">Projects</h1>
           <p className="text-muted-foreground">Won leads and active projects.</p>
         </div>
-        <Button
-          onClick={() => {
-            setEditingProject(null)
-            setDialogOpen(true)
-          }}
-        >
-          Add Project
-        </Button>
+        {canCreateProjects && (
+          <Button
+            onClick={() => {
+              setEditingProject(null)
+              setDialogOpen(true)
+            }}
+          >
+            Add Project
+          </Button>
+        )}
       </div>
 
       {isLoading ? (
@@ -118,9 +133,11 @@ export const ProjectsPage = () => {
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12 text-center">
             <p className="text-sm text-muted-foreground">No projects yet.</p>
-            <Button className="mt-3" onClick={() => setDialogOpen(true)}>
-              Add Project
-            </Button>
+            {canCreateProjects && (
+              <Button className="mt-3" onClick={() => setDialogOpen(true)}>
+                Add Project
+              </Button>
+            )}
           </CardContent>
         </Card>
       ) : (
@@ -161,32 +178,34 @@ export const ProjectsPage = () => {
                 {project.notes && (
                   <p className="line-clamp-2 text-xs text-muted-foreground">{project.notes}</p>
                 )}
-                <div className="mt-auto flex gap-2 pt-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => {
-                      setEditingProject(project)
-                      setDialogOpen(true)
-                    }}
-                  >
-                    <Pencil className="size-3.5 mr-1" /> Edit
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-destructive"
-                    aria-label="Delete project"
-                    onClick={() => {
-                      if (window.confirm(`Delete "${project.name}"? This cannot be undone.`)) {
-                        handleDelete(project.id)
-                      }
-                    }}
-                  >
-                    <Trash2 className="size-3.5" />
-                  </Button>
-                </div>
+                {canEditOrDeleteProjects && (
+                  <div className="mt-auto flex gap-2 pt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => {
+                        setEditingProject(project)
+                        setDialogOpen(true)
+                      }}
+                    >
+                      <Pencil className="size-3.5 mr-1" /> Edit
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-destructive"
+                      aria-label="Delete project"
+                      onClick={() => {
+                        if (window.confirm(`Delete "${project.name}"? This cannot be undone.`)) {
+                          handleDelete(project.id)
+                        }
+                      }}
+                    >
+                      <Trash2 className="size-3.5" />
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}
@@ -218,6 +237,7 @@ type ProjectFormValues = {
   revenue: number
   lead_id: string
   assigned_developers: string
+  developer_ids: string[]
   start_date: string
   end_date: string
   notes: string
@@ -236,18 +256,24 @@ function ProjectForm({
   onSave: (v: ProjectFormValues) => Promise<void>
   onCancel: () => void
 }) {
+  const { developerIds } = useProjectDevelopers(project?.id ?? null)
+  const { devs: assignableDevs } = useAssignableDevs()
+
   const [name, setName] = useState(project?.name ?? '')
   const [client_name, setClient_name] = useState(project?.client_name ?? '')
   const [status, setStatus] = useState(project?.status ?? 'active')
   const [revenue, setRevenue] = useState(project?.revenue ?? 0)
   const [lead_id, setLead_id] = useState(project?.lead_id ?? '')
-  const [assigned_developers, setAssigned_developers] = useState(
-    project?.assigned_developers?.join(', ') ?? ''
-  )
+  const [developer_ids, setDeveloper_ids] = useState<string[]>([])
   const [start_date, setStart_date] = useState(project?.start_date ?? '')
   const [end_date, setEnd_date] = useState(project?.end_date ?? '')
   const [notes, setNotes] = useState(project?.notes ?? '')
   const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    if (!project) setDeveloper_ids([])
+    else setDeveloper_ids(developerIds)
+  }, [project?.id, developerIds.join(',')])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -260,7 +286,8 @@ function ProjectForm({
         status: status as Project['status'],
         revenue: Number(revenue) || 0,
         lead_id: lead_id || '',
-        assigned_developers,
+        assigned_developers: assignableDevs.filter((d) => developer_ids.includes(d.id)).map((d) => d.full_name).join(', '),
+        developer_ids,
         start_date: start_date || '',
         end_date: end_date || '',
         notes: notes.trim() || '',
@@ -310,12 +337,27 @@ function ProjectForm({
         </Select>
       </div>
       <div className="space-y-2">
-        <Label>Assigned developers (comma-separated)</Label>
-        <Input
-          value={assigned_developers}
-          onChange={(e) => setAssigned_developers(e.target.value)}
-          placeholder="Dev1, Dev2"
-        />
+        <Label>Assign developers</Label>
+        <div className="flex flex-wrap gap-3 rounded-md border p-3">
+          {assignableDevs.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No developers in your team. Add developers from Team and assign a manager.</p>
+          ) : (
+            assignableDevs.map((d) => (
+              <label key={d.id} className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={developer_ids.includes(d.id)}
+                  onChange={(e) => {
+                    if (e.target.checked) setDeveloper_ids((prev) => [...prev, d.id])
+                    else setDeveloper_ids((prev) => prev.filter((id) => id !== d.id))
+                  }}
+                  className="rounded border-input"
+                />
+                <span className="text-sm">{d.full_name}</span>
+              </label>
+            ))
+          )}
+        </div>
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">

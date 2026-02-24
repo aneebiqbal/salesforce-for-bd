@@ -1,13 +1,16 @@
 import { createBrowserRouter, Navigate } from 'react-router'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { ProtectedRoute } from '@/routes/ProtectedRoute'
-import { AdminRoute } from '@/routes/AdminRoute'
+import { SuperAdminRoute } from '@/routes/SuperAdminRoute'
+import { ManagerRoute } from '@/routes/ManagerRoute'
 import { Login } from '@/pages/auth/Login'
 import { Register } from '@/pages/auth/Register'
 import { SetupPage } from '@/pages/setup/SetupPage'
 import { DashboardRedirect } from '@/pages/dashboard/DashboardRedirect'
 import { AdminDashboard } from '@/pages/dashboard/AdminDashboard'
 import { BDDashboard } from '@/pages/dashboard/BDDashboard'
+import { DevDashboard } from '@/pages/dashboard/DevDashboard'
+import { DevTasksPage } from '@/pages/dev/DevTasksPage'
 import { DailyActivity } from '@/pages/activities/DailyActivity'
 import { ActivityLog } from '@/pages/activities/ActivityLog'
 import { LeadsPipeline } from '@/pages/leads/LeadsPipeline'
@@ -39,19 +42,21 @@ export const router = createBrowserRouter([
         path: 'dashboard',
         children: [
           { index: true, element: <DashboardRedirect /> },
-          { path: 'admin', element: <AdminRoute><AdminDashboard /></AdminRoute> },
+          { path: 'admin', element: <SuperAdminRoute><AdminDashboard /></SuperAdminRoute> },
           { path: 'bd', element: <BDDashboard /> },
+          { path: 'dev', element: <DevDashboard /> },
         ],
       },
+      { path: 'dev/tasks', element: <DevTasksPage /> },
       { path: 'activities', element: <DailyActivity /> },
       { path: 'activities/log', element: <ActivityLog /> },
       { path: 'leads', element: <LeadsPipeline /> },
       { path: 'profiles', element: <ProfilesManagement /> },
-      { path: 'team', element: <AdminRoute><TeamManagement /></AdminRoute> },
+      { path: 'team', element: <ManagerRoute><TeamManagement /></ManagerRoute> },
       { path: 'targets', element: <TargetsPage /> },
       { path: 'projects', element: <ProjectsPage /> },
       { path: 'reports', element: <ReportsPage /> },
-      { path: 'settings', element: <SettingsPage /> },
+      { path: 'settings', element: <ManagerRoute><SettingsPage /></ManagerRoute> },
     ],
   },
   { path: '*', element: <Navigate to="/dashboard" replace /> },

@@ -4,7 +4,7 @@ import type { UserProfile } from '@/types'
 
 export const USER_PROFILES_QUERY_KEY = ['user-profiles']
 
-export const useUserProfiles = (role?: 'admin' | 'bd_manager' | 'staff') => {
+export const useUserProfiles = (role?: 'super_admin' | 'bd_manager' | 'bd') => {
   const { data: users = [], isLoading } = useQuery({
     queryKey: [...USER_PROFILES_QUERY_KEY, role],
     queryFn: async (): Promise<UserProfile[]> => {

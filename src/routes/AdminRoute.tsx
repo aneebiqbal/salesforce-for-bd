@@ -1,18 +1,6 @@
-import { Navigate } from 'react-router'
-import { useAuth } from '@/hooks/useAuth'
+/** @deprecated Use SuperAdminRoute or ManagerRoute */
+import { SuperAdminRoute } from '@/routes/SuperAdminRoute'
 
-export const AdminRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, isLoading } = useAuth()
-
-  if (isLoading) {
-    return (
-      <div className="flex min-h-dvh items-center justify-center bg-background">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-      </div>
-    )
-  }
-  if (user?.role !== 'admin') {
-    return <Navigate to="/dashboard/bd" replace />
-  }
-  return <>{children}</>
-}
+export const AdminRoute = ({ children }: { children: React.ReactNode }) => (
+  <SuperAdminRoute>{children}</SuperAdminRoute>
+)

@@ -1,11 +1,15 @@
+import { useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/hooks/useAuth'
 import type { UserProfile } from '@/types'
 
 export const TEAM_QUERY_KEY = ['team']
 
+/** Team members: super_admin sees all; bd_manager sees self + their BDs (manager_id = self); bd sees only self. */
 export const useTeamMembers = () => {
-  const { data: members = [], isLoading } = useQuery({
+  const { user } = useAuth()
+  const { data: allMembers = [], isLoading } = useQuery({
     queryKey: TEAM_QUERY_KEY,
     queryFn: async (): Promise<UserProfile[]> => {
       const { data, error } = await supabase
@@ -15,17 +19,58 @@ export const useTeamMembers = () => {
       if (error) throw error
       return (data ?? []) as UserProfile[]
     },
-    enabled: true,
+    enabled: !!user,
     staleTime: 2 * 60 * 1000,
   })
-  return { members, isLoading }
+
+  const members = useMemo(() => {
+    if (!user) return []
+    if (user.role === 'super_admin') return allMembers
+    if (user.role === 'bd_manager') {
+      return allMembers.filter((m) => m.manager_id === user.id || m.id === user.id)
+    }
+    return allMembers.filter((m) => m.id === user.id)
+  }, [user, allMembers])
+
+  return { members, allMembers, isLoading }
 }
 
-/** Members that can be assigned as BD (admin or bd_manager) */
+/** Who can be assigned to (profiles, leads, tasks): super_admin = all BDs + managers; bd_manager = their BDs only, exclude self. */
 export const useAssignableMembers = () => {
-  const { members, isLoading } = useTeamMembers()
-  const assignable = members.filter((m) => m.role === 'admin' || m.role === 'bd_manager')
-  return { members: assignable, allMembers: members, isLoading }
+  const { user } = useAuth()
+  const { members: teamMembers, allMembers, isLoading } = useTeamMembers()
+
+  const members = useMemo(() => {
+    if (!user) return []
+    if (user.role === 'super_admin') {
+      return allMembers.filter((m) => m.role === 'bd' || m.role === 'bd_manager')
+    }
+    if (user.role === 'bd_manager') {
+      return teamMembers.filter((m) => m.role === 'bd' && m.id !== user.id)
+    }
+    return []
+  }, [user, teamMembers, allMembers])
+
+  return { members, allMembers, isLoading }
+}
+
+/** Developers that BD manager/super_admin can assign tasks to: super_admin = all developers; bd_manager = their devs (manager_id = self). */
+export const useAssignableDevs = () => {
+  const { user } = useAuth()
+  const { allMembers, isLoading } = useTeamMembers()
+
+  const devs = useMemo(() => {
+    if (!user) return []
+    if (user.role === 'super_admin') {
+      return allMembers.filter((m) => m.role === 'developer')
+    }
+    if (user.role === 'bd_manager') {
+      return allMembers.filter((m) => m.role === 'developer' && (m.manager_id === user.id || !m.manager_id))
+    }
+    return []
+  }, [user, allMembers])
+
+  return { devs, allMembers, isLoading }
 }
 
 export const useUpdateMemberRole = () => {
@@ -65,5 +110,25 @@ export const useToggleMemberActive = () => {
   return {
     toggleMemberActive: mutation.mutateAsync,
     isToggling: mutation.isPending,
+  }
+}
+
+export const useUpdateMemberManager = () => {
+  const queryClient = useQueryClient()
+  const mutation = useMutation({
+    mutationFn: async ({ userId, managerId }: { userId: string; managerId: string | null }) => {
+      const { error } = await supabase
+        .from('user_profiles')
+        .update({ manager_id: managerId, updated_at: new Date().toISOString() })
+        .eq('id', userId)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: TEAM_QUERY_KEY })
+    },
+  })
+  return {
+    updateMemberManager: mutation.mutateAsync,
+    isUpdating: mutation.isPending,
   }
 }

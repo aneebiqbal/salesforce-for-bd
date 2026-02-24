@@ -9,13 +9,15 @@ import { Badge } from '@/components/ui/badge'
 import { ActivityLogTable } from '@/components/tables/ActivityLogTable'
 import { useAuth } from '@/hooks/useAuth'
 import { useActivityLog } from '@/hooks/useActivityLog'
-import { useUserProfiles } from '@/hooks/useUserProfiles'
+import { useTeamMembers } from '@/hooks/useTeam'
 import { usePlatforms } from '@/hooks/usePlatforms'
 
 export const ActivityLog = () => {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const isAdmin = user?.role === 'admin'
+  const isSuperAdmin = user?.role === 'super_admin'
+  const isBdManager = user?.role === 'bd_manager'
+  const canFilterByTeam = isSuperAdmin || isBdManager
 
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
@@ -24,10 +26,11 @@ export const ActivityLog = () => {
   const [platformId, setPlatformId] = useState<string>(ALL_VALUE)
   const [page, setPage] = useState(1)
 
-  const { users: bdUsers } = useUserProfiles('bd_manager')
+  const { members } = useTeamMembers()
+  const bdUsers = canFilterByTeam ? members.filter((m) => m.role === 'bd' || m.role === 'bd_manager') : []
   const { platforms } = usePlatforms()
   const { rows, total, pageSize, isLoading } = useActivityLog({
-    bdMemberId: isAdmin ? (bdMemberId === ALL_VALUE ? null : bdMemberId) : user?.id ?? null,
+    bdMemberId: canFilterByTeam ? (bdMemberId === ALL_VALUE ? null : bdMemberId) : user?.id ?? null,
     startDate: startDate || null,
     endDate: endDate || null,
     platformId: platformId === ALL_VALUE ? null : platformId,
@@ -46,7 +49,7 @@ export const ActivityLog = () => {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Activity History</h1>
         <p className="text-muted-foreground">
-          {isAdmin
+          {canFilterByTeam
             ? 'View and filter daily activity across the team. Use filters to see by person, platform, or date range.'
             : 'Your logged daily activity. Each row is one profile for one day.'}
         </p>
@@ -56,7 +59,7 @@ export const ActivityLog = () => {
         <CardHeader>
           <CardTitle className="text-base">Filters</CardTitle>
           <p className="text-sm text-muted-foreground">
-            {isAdmin ? 'Filter by BD member, platform, and date range.' : 'Filter by platform and date range.'}
+            {canFilterByTeam ? 'Filter by BD member, platform, and date range.' : 'Filter by platform and date range.'}
           </p>
         </CardHeader>
         <CardContent>
@@ -69,7 +72,7 @@ export const ActivityLog = () => {
               <Label>End date</Label>
               <Input type="date" value={endDate} onChange={(e) => { setEndDate(e.target.value); setPage(1) }} />
             </div>
-            {isAdmin && (
+            {canFilterByTeam && (
               <div className="space-y-2">
                 <Label>BD Member</Label>
                 <Select value={bdMemberId} onValueChange={(v) => { setBdMemberId(v); setPage(1) }}>
@@ -111,7 +114,7 @@ export const ActivityLog = () => {
         <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
           <div>
             <CardTitle className="text-base">
-              {isAdmin ? (bdMemberId !== ALL_VALUE ? 'Activities' : 'Team activities') : 'My activities'}
+              {canFilterByTeam ? (bdMemberId !== ALL_VALUE ? 'Activities' : 'Team activities') : 'My activities'}
             </CardTitle>
             <p className="text-sm text-muted-foreground mt-0.5">
               Newest first

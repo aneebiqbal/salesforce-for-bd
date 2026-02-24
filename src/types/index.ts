@@ -1,4 +1,4 @@
-export type UserRole = 'admin' | 'bd_manager' | 'staff'
+export type UserRole = 'super_admin' | 'bd_manager' | 'bd' | 'developer'
 
 export type ProfileStatus = 'active' | 'inactive'
 
@@ -24,6 +24,7 @@ export interface UserProfile {
   email: string
   full_name: string
   role: UserRole
+  manager_id: string | null
   avatar_url: string | null
   is_active: boolean
   created_at: string
@@ -79,6 +80,7 @@ export interface DailyActivity {
   easy_applies: number
   connection_requests: number
   direct_applies: number
+  indeed_applies: number
   dms_sent: number
   fetched_emails: number
   inmail_sent: number
@@ -149,8 +151,41 @@ export interface Project {
   updated_at: string
 }
 
+/** dev_tasks table - tasks assigned by BD manager to developer */
+export interface DevTask {
+  id: string
+  dev_id: string
+  assigned_by: string
+  project_id: string | null
+  title: string
+  description: string | null
+  due_date: string
+  due_time: string | null
+  completed_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+/** dev_attendance table - developer check-in/check-out per day */
+export interface DevAttendance {
+  id: string
+  dev_id: string
+  attendance_date: string
+  check_in_at: string | null
+  check_out_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+/** project_developers - many-to-many */
+export interface ProjectDeveloper {
+  project_id: string
+  developer_id: string
+  created_at: string
+}
+
 /** notifications table - when admin assigns task/lead/profile to BD */
-export type NotificationType = 'task_assigned' | 'lead_assigned' | 'profile_assigned'
+export type NotificationType = 'task_assigned' | 'lead_assigned' | 'profile_assigned' | 'dev_task_assigned'
 
 export interface Notification {
   id: string

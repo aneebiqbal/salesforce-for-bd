@@ -11,6 +11,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useProfiles } from '@/hooks/useProfiles'
 import { useActivities } from '@/hooks/useActivities'
 import { useCheckInStatus, useCheckIn } from '@/hooks/useCheckIn'
+import { useTodayTeamStatus } from '@/hooks/useTodayTeamStatus'
 import type { ProfileWithPlatform, DailyActivity as DailyActivityType } from '@/types'
 import { Link } from 'react-router'
 import {
@@ -26,7 +27,10 @@ export const DailyActivity = () => {
   const [activityDate, setActivityDate] = useState(today)
   const [sheetProfile, setSheetProfile] = useState<ProfileWithPlatform | null>(null)
 
-  const { profiles, isLoading: profilesLoading } = useProfiles(user?.id)
+  const showTeamStatusOnly = user?.role === 'bd_manager' || user?.role === 'super_admin'
+  const { rows: teamStatusRows, isLoading: teamStatusLoading } = useTodayTeamStatus()
+
+  const { profiles, isLoading: profilesLoading } = useProfiles(showTeamStatusOnly ? undefined : user?.id)
   const { activities, isLoading: activitiesLoading, upsertActivity } = useActivities(
     user?.id,
     activityDate,
@@ -38,10 +42,11 @@ export const DailyActivity = () => {
   )
   const firstProfile = profiles?.[0]
   const { checkIn, checkOut, isCheckingOut, autoCheckOutPreviousSession } = useCheckIn(
+    showTeamStatusOnly ? undefined : user?.id,
     user?.id,
     activityDate,
-    firstProfile?.id,
-    firstProfile?.platform_id
+    firstProfile?.id ?? null,
+    firstProfile?.platform_id ?? undefined
   )
 
   const activityByProfile = useMemo(() => {
@@ -140,6 +145,66 @@ export const DailyActivity = () => {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
         <p className="text-muted-foreground">Sign in to log activity.</p>
+      </div>
+    )
+  }
+
+  if (showTeamStatusOnly) {
+    return (
+      <div className="space-y-5">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Team Activity Status</h1>
+          <p className="text-muted-foreground text-sm mt-0.5">
+            Who has logged activity today. Only BDs fill numbers; managers and super admins monitor here.
+          </p>
+        </div>
+        <Card>
+          <CardContent className="p-0">
+            {teamStatusLoading ? (
+              <div className="space-y-2 p-4">
+                {[1, 2, 3].map((i) => <Skeleton key={i} className="h-16 w-full rounded-lg" />)}
+              </div>
+            ) : teamStatusRows.length === 0 ? (
+              <div className="py-10 text-center text-sm text-muted-foreground">
+                No team members in your scope.
+              </div>
+            ) : (
+              <div className="divide-y">
+                {teamStatusRows.map((row) => {
+                  const allFilled = row.total_profiles > 0 && row.profiles_filled >= row.total_profiles
+                  const progressPct = row.total_profiles > 0 ? Math.round((row.profiles_filled / row.total_profiles) * 100) : 0
+                  return (
+                    <div
+                      key={row.bd_member_id}
+                      className={cn(
+                        'flex items-center justify-between gap-4 px-4 py-3',
+                        allFilled && 'bg-green-500/5',
+                        !row.checked_in && row.profiles_filled === 0 && 'bg-muted/30'
+                      )}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={cn(
+                          'size-2.5 rounded-full shrink-0',
+                          allFilled ? 'bg-green-500' : row.profiles_filled > 0 ? 'bg-amber-400' : 'bg-muted-foreground/40'
+                        )} />
+                        <div>
+                          <p className="font-medium">{row.bd_name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {row.profiles_filled}/{row.total_profiles} profiles · {allFilled ? 'Done' : row.checked_in ? 'In progress' : 'Not started'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Progress value={progressPct} className="h-2 w-20" />
+                        <span className="text-sm tabular-nums text-muted-foreground">{progressPct}%</span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     )
   }
@@ -276,9 +341,9 @@ export const DailyActivity = () => {
               <AlertCircle className="mx-auto size-8 text-muted-foreground/50" />
               <div>
                 <p className="font-medium">No accounts assigned yet</p>
-                <p className="text-sm text-muted-foreground mt-1">Ask your admin to assign accounts to you.</p>
+                <p className="text-sm text-muted-foreground mt-1">Ask your manager or super admin to assign accounts to you.</p>
               </div>
-              {user?.role === 'admin' && (
+              {user?.role === 'super_admin' && (
                 <Button asChild variant="outline" size="sm">
                   <Link to="/profiles">Manage Accounts</Link>
                 </Button>

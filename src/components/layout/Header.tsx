@@ -35,8 +35,17 @@ export const Header = () => {
         .slice(0, 2)
     : user?.email?.slice(0, 2).toUpperCase() ?? '?'
 
-  const dashboardTo = user?.role === 'admin' ? '/dashboard/admin' : '/dashboard/bd'
-  const roleLabel = user?.role === 'admin' ? 'Admin' : user?.role === 'bd_manager' ? 'BD Manager' : 'Staff'
+  const dashboardTo =
+    user?.role === 'super_admin' ? '/dashboard/admin' : user?.role === 'developer' ? '/dashboard/dev' : '/dashboard/bd'
+  const roleLabel =
+    user?.role === 'super_admin'
+      ? 'Super Admin'
+      : user?.role === 'bd_manager'
+        ? 'BD Manager'
+        : user?.role === 'developer'
+          ? 'Developer'
+          : 'BD'
+  const canAccessSettings = user?.role === 'super_admin' || user?.role === 'bd_manager'
 
   return (
     <header className="flex h-14 shrink-0 items-center justify-between gap-4 border-b border-border bg-background px-4">
@@ -77,12 +86,14 @@ export const Header = () => {
                 Dashboard
               </Link>
             </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link to="/settings" className="flex cursor-pointer items-center gap-2">
-                <User className="size-4" />
-                Settings
-              </Link>
-            </DropdownMenuItem>
+            {canAccessSettings && (
+              <DropdownMenuItem asChild>
+                <Link to="/settings" className="flex cursor-pointer items-center gap-2">
+                  <User className="size-4" />
+                  Settings
+                </Link>
+              </DropdownMenuItem>
+            )}
             <DropdownMenuSeparator />
             <DropdownMenuItem
               className="text-destructive focus:text-destructive cursor-pointer"
