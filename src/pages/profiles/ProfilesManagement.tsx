@@ -30,15 +30,14 @@ import { useAssignableMembers } from '@/hooks/useTeam'
 import { createNotification } from '@/hooks/useNotifications'
 import type { ProfileWithPlatform } from '@/types'
 import { Briefcase, Linkedin, Mail, Pencil, Power, PowerOff } from 'lucide-react'
+import { isManagerOrSuperAdmin } from '@/lib/roles'
 import { cn } from '@/lib/utils'
 
 const FILTER_ALL = '__all__'
 
 export const ProfilesManagement = () => {
   const { user } = useAuth()
-  const isSuperAdmin = user?.role === 'super_admin'
-  const isBdManager = user?.role === 'bd_manager'
-  const canManageProfiles = isSuperAdmin || isBdManager
+  const canManageProfiles = isManagerOrSuperAdmin(user)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingProfile, setEditingProfile] = useState<ProfileWithPlatform | null>(null)
   const [platformFilter, setPlatformFilter] = useState<string>(FILTER_ALL)

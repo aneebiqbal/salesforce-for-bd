@@ -1,5 +1,6 @@
 import { Navigate } from 'react-router'
 import { useAuth } from '@/hooks/useAuth'
+import { isSuperAdmin } from '@/lib/roles'
 
 export const SuperAdminRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, isLoading } = useAuth()
@@ -11,8 +12,6 @@ export const SuperAdminRoute = ({ children }: { children: React.ReactNode }) => 
       </div>
     )
   }
-  if (user?.role !== 'super_admin') {
-    return <Navigate to="/dashboard" replace />
-  }
+  if (!isSuperAdmin(user)) return <Navigate to="/dashboard" replace />
   return <>{children}</>
 }

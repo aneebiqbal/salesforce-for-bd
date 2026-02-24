@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge'
 import { ActivityLogTable } from '@/components/tables/ActivityLogTable'
 import { useAuth } from '@/hooks/useAuth'
+import { isManagerOrSuperAdmin } from '@/lib/roles'
 import { useActivityLog } from '@/hooks/useActivityLog'
 import { useTeamMembers } from '@/hooks/useTeam'
 import { usePlatforms } from '@/hooks/usePlatforms'
@@ -15,9 +16,7 @@ import { usePlatforms } from '@/hooks/usePlatforms'
 export const ActivityLog = () => {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const isSuperAdmin = user?.role === 'super_admin'
-  const isBdManager = user?.role === 'bd_manager'
-  const canFilterByTeam = isSuperAdmin || isBdManager
+  const canFilterByTeam = isManagerOrSuperAdmin(user)
 
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')

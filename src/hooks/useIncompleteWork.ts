@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { useAuth } from '@/hooks/useAuth'
+import { isSuperAdmin, isDeveloper } from '@/lib/roles'
 import { useTasks } from '@/hooks/useTasks'
 import { useDevTasks } from '@/hooks/useDevTasks'
 import { useProfiles } from '@/hooks/useProfiles'
@@ -14,15 +15,15 @@ export function useIncompleteWork() {
   const { user } = useAuth()
   const userId = user?.id ?? ''
   const todayStr = new Date().toISOString().slice(0, 10)
-  const isDeveloper = user?.role === 'developer'
+  const developer = isDeveloper(user)
 
-  const { tasks } = useTasks(user?.role === 'super_admin' ? undefined : userId)
-  const { tasks: devTasks } = useDevTasks(isDeveloper ? userId : undefined)
+  const { tasks } = useTasks(isSuperAdmin(user) ? undefined : userId)
+  const { tasks: devTasks } = useDevTasks(developer ? userId : undefined)
   const { profiles } = useProfiles(userId)
   const { activities: todayActivities } = useActivities(userId, todayStr, todayStr)
 
   return useMemo(() => {
-    const sourceTasks = isDeveloper ? (devTasks ?? []) : (tasks ?? [])
+    const sourceTasks = developer ? (devTasks ?? []) : (tasks ?? [])
     const pendingTasks = sourceTasks.filter((t) => !('completed_at' in t) || !t.completed_at)
     const pendingTaskCount = pendingTasks.length
     const overdueCount = pendingTasks.filter(
@@ -30,7 +31,7 @@ export function useIncompleteWork() {
     ).length
     const dueTodayCount = pendingTasks.filter((t) => t.due_date === todayStr).length
 
-    const totalProfiles = isDeveloper ? 0 : (profiles?.length ?? 0)
+    const totalProfiles = developer ? 0 : (profiles?.length ?? 0)
     const filledProfileIds = new Set((todayActivities ?? []).map((a) => a.profile_id))
     const filledCount = filledProfileIds.size
     const allActivityDone =

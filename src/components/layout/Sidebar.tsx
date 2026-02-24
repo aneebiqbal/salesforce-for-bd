@@ -20,6 +20,7 @@ import { Badge } from '@/components/ui/badge'
 import { useUIStore } from '@/stores/uiStore'
 import { useAuth } from '@/hooks/useAuth'
 import { useIncompleteWork } from '@/hooks/useIncompleteWork'
+import { isSuperAdmin, isManagerOrSuperAdmin, isDeveloper } from '@/lib/roles'
 import { Separator } from '@/components/ui/separator'
 
 const navItems: { to: string; label: string; sublabel: string; icon: typeof LayoutDashboard; managerOrSuperAdminOnly?: boolean }[] = [
@@ -47,15 +48,14 @@ export const Sidebar = () => {
   const { user } = useAuth()
   const { sidebarOpen, toggleSidebar } = useUIStore()
   const incomplete = useIncompleteWork()
-  const isSuperAdmin = user?.role === 'super_admin'
-  const canAccessManagerPages = user?.role === 'super_admin' || user?.role === 'bd_manager'
-  const isDeveloper = user?.role === 'developer'
-  const items = isDeveloper
+  const canAccessManagerPages = isManagerOrSuperAdmin(user)
+  const developer = isDeveloper(user)
+  const items = developer
     ? devNavItems
     : navItems.filter((item) => !item.managerOrSuperAdminOnly || canAccessManagerPages)
 
   const getBadge = (to: string) => {
-    if (to === '/dashboard' && !isSuperAdmin && incomplete.incompleteCount > 0)
+    if (to === '/dashboard' && !isSuperAdmin(user) && incomplete.incompleteCount > 0)
       return incomplete.incompleteCount
     if (to === '/activities' && user?.role === 'bd' && incomplete.activityIncomplete) return '!'
     if (to === '/targets' && incomplete.pendingTaskCount > 0) return incomplete.pendingTaskCount

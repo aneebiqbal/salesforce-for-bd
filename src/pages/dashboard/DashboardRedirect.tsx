@@ -1,5 +1,6 @@
 import { Navigate } from 'react-router'
 import { useAuth } from '@/hooks/useAuth'
+import { isSuperAdmin, isDeveloper } from '@/lib/roles'
 
 export const DashboardRedirect = () => {
   const { user, isLoading } = useAuth()
@@ -13,11 +14,7 @@ export const DashboardRedirect = () => {
   }
   if (!user) return null
 
-  if (user.role === 'super_admin') {
-    return <Navigate to="/dashboard/admin" replace />
-  }
-  if (user.role === 'developer') {
-    return <Navigate to="/dashboard/dev" replace />
-  }
+  if (isSuperAdmin(user)) return <Navigate to="/dashboard/admin" replace />
+  if (isDeveloper(user)) return <Navigate to="/dashboard/dev" replace />
   return <Navigate to="/dashboard/bd" replace />
 }

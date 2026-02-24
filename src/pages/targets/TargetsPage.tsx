@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useAuth } from '@/hooks/useAuth'
+import { isManagerOrSuperAdmin } from '@/lib/roles'
 import { useTargets } from '@/hooks/useTargets'
 import { createNotification } from '@/hooks/useNotifications'
 import { useActivities } from '@/hooks/useActivities'
@@ -59,7 +60,7 @@ const REPEAT_LABELS: Record<string, string> = {
 
 export const TargetsPage = () => {
   const { user } = useAuth()
-  const canManageTargets = user?.role === 'super_admin' || user?.role === 'bd_manager'
+  const canManageTargets = isManagerOrSuperAdmin(user)
   const today = new Date().toISOString().slice(0, 10)
 
   // Targets state

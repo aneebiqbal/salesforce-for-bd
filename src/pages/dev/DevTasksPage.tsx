@@ -29,6 +29,7 @@ import {
   Circle,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
+import { isDeveloper as isDevRole, isManagerOrSuperAdmin } from '@/lib/roles'
 import { useDevTasks, type DevTaskInsert } from '@/hooks/useDevTasks'
 import { useAssignableDevs } from '@/hooks/useTeam'
 import { useProjects } from '@/hooks/useProjects'
@@ -100,8 +101,8 @@ function TaskRow({
 export const DevTasksPage = () => {
   const { user } = useAuth()
   const userId = user?.id ?? ''
-  const isDeveloper = user?.role === 'developer'
-  const isManager = user?.role === 'bd_manager' || user?.role === 'super_admin'
+  const isDeveloper = isDevRole(user)
+  const isManager = isManagerOrSuperAdmin(user)
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [selectedDevId, setSelectedDevId] = useState<string>('')

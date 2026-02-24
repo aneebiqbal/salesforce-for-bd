@@ -14,6 +14,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { useAuth } from '@/hooks/useAuth'
 import { useQueryClient } from '@tanstack/react-query'
+import { isSuperAdmin, isBdManager, isDeveloper, isManagerOrSuperAdmin } from '@/lib/roles'
 
 export const Header = () => {
   const { user, signOut } = useAuth()
@@ -35,17 +36,9 @@ export const Header = () => {
         .slice(0, 2)
     : user?.email?.slice(0, 2).toUpperCase() ?? '?'
 
-  const dashboardTo =
-    user?.role === 'super_admin' ? '/dashboard/admin' : user?.role === 'developer' ? '/dashboard/dev' : '/dashboard/bd'
-  const roleLabel =
-    user?.role === 'super_admin'
-      ? 'Super Admin'
-      : user?.role === 'bd_manager'
-        ? 'BD Manager'
-        : user?.role === 'developer'
-          ? 'Developer'
-          : 'BD'
-  const canAccessSettings = user?.role === 'super_admin' || user?.role === 'bd_manager'
+  const dashboardTo = isSuperAdmin(user) ? '/dashboard/admin' : isDeveloper(user) ? '/dashboard/dev' : '/dashboard/bd'
+  const roleLabel = isSuperAdmin(user) ? 'Super Admin' : isBdManager(user) ? 'BD Manager' : isDeveloper(user) ? 'Developer' : 'BD'
+  const canAccessSettings = isManagerOrSuperAdmin(user)
 
   return (
     <header className="flex h-14 shrink-0 items-center justify-between gap-4 border-b border-border bg-background px-4">

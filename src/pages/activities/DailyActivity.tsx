@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Progress } from '@/components/ui/progress'
 import { ActivityQuickFillSheet } from '@/components/activities/ActivityQuickFillSheet'
 import { useAuth } from '@/hooks/useAuth'
+import { isManagerOrSuperAdmin, isSuperAdmin } from '@/lib/roles'
 import { useProfiles } from '@/hooks/useProfiles'
 import { useActivities } from '@/hooks/useActivities'
 import { useCheckInStatus, useCheckIn } from '@/hooks/useCheckIn'
@@ -27,14 +28,13 @@ export const DailyActivity = () => {
   const [activityDate, setActivityDate] = useState(today)
   const [sheetProfile, setSheetProfile] = useState<ProfileWithPlatform | null>(null)
 
-  const canSeeTeamStatus = user?.role === 'bd_manager' || user?.role === 'super_admin'
-  const canLogAnyProfile = user?.role === 'super_admin' || user?.role === 'bd_manager'
+  const canSeeTeamAndLogAny = isManagerOrSuperAdmin(user)
   const { rows: teamStatusRows, isLoading: teamStatusLoading } = useTodayTeamStatus()
 
   // Super admin & BD manager: see all profiles (in scope) so they can log any. BD: only own profiles.
-  const { profiles, isLoading: profilesLoading } = useProfiles(canLogAnyProfile ? undefined : user?.id)
+  const { profiles, isLoading: profilesLoading } = useProfiles(canSeeTeamAndLogAny ? undefined : user?.id)
   const { activities, isLoading: activitiesLoading, upsertActivity } = useActivities(
-    canLogAnyProfile ? undefined : user?.id,
+    canSeeTeamAndLogAny ? undefined : user?.id,
     activityDate,
     activityDate
   )
@@ -153,7 +153,7 @@ export const DailyActivity = () => {
   return (
     <div className="space-y-5">
       {/* Team status — managers and super admins see who has logged today */}
-      {canSeeTeamStatus && (
+      {canSeeTeamAndLogAny && (
         <Card>
           <CardContent className="p-0">
             <div className="px-4 pt-4 pb-1">
@@ -341,7 +341,7 @@ export const DailyActivity = () => {
                 <p className="font-medium">No accounts assigned yet</p>
                 <p className="text-sm text-muted-foreground mt-1">Ask your manager or super admin to assign accounts to you.</p>
               </div>
-              {user?.role === 'super_admin' && (
+              {isSuperAdmin(user) && (
                 <Button asChild variant="outline" size="sm">
                   <Link to="/profiles">Manage Accounts</Link>
                 </Button>

@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
+import { isSuperAdmin, isBdManager } from '@/lib/roles'
 import type { UserProfile } from '@/types'
 
 export const TEAM_QUERY_KEY = ['team']
@@ -25,8 +26,8 @@ export const useTeamMembers = () => {
 
   const members = useMemo(() => {
     if (!user) return []
-    if (user.role === 'super_admin') return allMembers
-    if (user.role === 'bd_manager') {
+    if (isSuperAdmin(user)) return allMembers
+    if (isBdManager(user)) {
       return allMembers.filter((m) => m.manager_id === user.id || m.id === user.id)
     }
     return allMembers.filter((m) => m.id === user.id)
@@ -42,10 +43,10 @@ export const useAssignableMembers = () => {
 
   const members = useMemo(() => {
     if (!user) return []
-    if (user.role === 'super_admin') {
+    if (isSuperAdmin(user)) {
       return allMembers.filter((m) => m.role === 'bd' || m.role === 'bd_manager')
     }
-    if (user.role === 'bd_manager') {
+    if (isBdManager(user)) {
       return teamMembers.filter((m) => m.role === 'bd' && m.id !== user.id)
     }
     return []
@@ -61,10 +62,10 @@ export const useAssignableDevs = () => {
 
   const devs = useMemo(() => {
     if (!user) return []
-    if (user.role === 'super_admin') {
+    if (isSuperAdmin(user)) {
       return allMembers.filter((m) => m.role === 'developer')
     }
-    if (user.role === 'bd_manager') {
+    if (isBdManager(user)) {
       return allMembers.filter((m) => m.role === 'developer' && (m.manager_id === user.id || !m.manager_id))
     }
     return []

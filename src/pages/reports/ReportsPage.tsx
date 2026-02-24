@@ -16,6 +16,7 @@ import { useTargets } from '@/hooks/useTargets'
 import { useBDPerformance } from '@/hooks/useBDPerformance'
 import { useUserProfiles } from '@/hooks/useUserProfiles'
 import { useAuthContext } from '@/providers/AuthProvider'
+import { isManagerOrSuperAdmin } from '@/lib/roles'
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -85,7 +86,7 @@ const tooltipStyle = {
 
 export const ReportsPage = () => {
   const { user } = useAuthContext()
-  const canSeeTeamReports = user?.role === 'super_admin' || user?.role === 'bd_manager'
+  const canSeeTeamReports = isManagerOrSuperAdmin(user)
 
   const [rangeStart, setRangeStart] = useState(QUICK_RANGES[2].start)
   const [rangeEnd, setRangeEnd] = useState(QUICK_RANGES[2].end)

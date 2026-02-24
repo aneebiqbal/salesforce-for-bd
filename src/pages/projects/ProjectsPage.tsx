@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/select'
 import { Link } from 'react-router'
 import { useAuth } from '@/hooks/useAuth'
+import { isSuperAdmin, isManagerOrSuperAdmin } from '@/lib/roles'
 import { useProjects } from '@/hooks/useProjects'
 import { useProjectDevelopers } from '@/hooks/useProjectDevelopers'
 import { useAssignableDevs } from '@/hooks/useTeam'
@@ -37,8 +38,8 @@ export const ProjectsPage = () => {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingProject, setEditingProject] = useState<Project | null>(null)
 
-  const canCreateProjects = user?.role === 'super_admin' || user?.role === 'bd_manager'
-  const canEditOrDeleteProjects = user?.role === 'super_admin'
+  const canCreateProjects = isManagerOrSuperAdmin(user)
+  const canEditOrDeleteProjects = isSuperAdmin(user)
   const { projects, isLoading, createProject, updateProject, deleteProject } = useProjects()
   const { syncDevelopers } = useProjectDevelopers(null)
   const { devs: assignableDevs } = useAssignableDevs()

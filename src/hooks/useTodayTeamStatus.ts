@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
+import { isBdManager, isBd } from '@/lib/roles'
 import type { DailyActivity } from '@/types'
 
 export const TODAY_TEAM_STATUS_QUERY_KEY = ['today-team-status']
@@ -21,6 +22,7 @@ export const useTodayTeamStatus = () => {
   const { data: rawRows = [], isLoading } = useQuery({
     queryKey: [...TODAY_TEAM_STATUS_QUERY_KEY, today, user?.id, user?.role],
     queryFn: async (): Promise<TodayTeamStatusRow[]> => {
+      if (!user) return []
       const { data: allUsers, error: e0 } = await supabase
         .from('user_profiles')
         .select('id, full_name, role, manager_id')
@@ -29,9 +31,9 @@ export const useTodayTeamStatus = () => {
       if (!allUsers?.length) return []
 
       let bdUsers = allUsers as { id: string; full_name: string; role: string; manager_id: string | null }[]
-      if (user?.role === 'bd_manager') {
+      if (isBdManager(user)) {
         bdUsers = bdUsers.filter((u) => u.manager_id === user.id || u.id === user.id)
-      } else if (user?.role === 'bd') {
+      } else if (isBd(user)) {
         bdUsers = bdUsers.filter((u) => u.id === user.id)
       }
 

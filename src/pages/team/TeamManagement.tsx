@@ -17,6 +17,7 @@ import { useTeamMembers, useUpdateMemberRole, useToggleMemberActive, useUpdateMe
 import { useActivities } from '@/hooks/useActivities'
 import { useProfiles } from '@/hooks/useProfiles'
 import type { UserRole } from '@/types'
+import { isSuperAdmin, isBdManager } from '@/lib/roles'
 import { cn } from '@/lib/utils'
 
 function initials(name: string): string {
@@ -48,13 +49,13 @@ export const TeamManagement = () => {
   }, [profiles])
 
   const superAdminCount = useMemo(() => members.filter((m) => m.role === 'super_admin').length, [members])
-  const isSuperAdmin = currentUser?.role === 'super_admin'
-  const isBdManager = currentUser?.role === 'bd_manager'
+  const _isSuperAdmin = isSuperAdmin(currentUser)
+  const _isBdManager = isBdManager(currentUser)
   const managerOptions = useMemo(() => {
-    if (isSuperAdmin) return allMembers.filter((m) => m.role === 'super_admin' || m.role === 'bd_manager')
-    if (isBdManager && currentUser) return [currentUser]
+    if (_isSuperAdmin) return allMembers.filter((m) => m.role === 'super_admin' || m.role === 'bd_manager')
+    if (_isBdManager && currentUser) return [currentUser]
     return []
-  }, [isSuperAdmin, isBdManager, currentUser, allMembers])
+  }, [_isSuperAdmin, _isBdManager, currentUser, allMembers])
 
   const { activities: allActivities } = useActivities()
   const lastActiveDateByMember = useMemo(() => {
@@ -220,7 +221,7 @@ export const TeamManagement = () => {
                         </SelectContent>
                       </Select>
                     </div>
-                    {(isSuperAdmin || isBdManager) && (member.role === 'bd' || member.role === 'developer') && managerOptions.length > 0 && (
+                    {(_isSuperAdmin || _isBdManager) && (member.role === 'bd' || member.role === 'developer') && managerOptions.length > 0 && (
                       <div className="flex items-center gap-2">
                         <Label className="text-xs text-muted-foreground shrink-0">Manager</Label>
                         <Select

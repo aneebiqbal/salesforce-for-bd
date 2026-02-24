@@ -1,7 +1,8 @@
 import { Navigate } from 'react-router'
 import { useAuth } from '@/hooks/useAuth'
+import { isManagerOrSuperAdmin } from '@/lib/roles'
 
-/** Allows super_admin or bd_manager. BD is redirected. */
+/** Allows super_admin or bd_manager. BD/developer redirected. */
 export const ManagerRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, isLoading } = useAuth()
 
@@ -12,8 +13,6 @@ export const ManagerRoute = ({ children }: { children: React.ReactNode }) => {
       </div>
     )
   }
-  if (user?.role !== 'super_admin' && user?.role !== 'bd_manager') {
-    return <Navigate to="/dashboard" replace />
-  }
+  if (!isManagerOrSuperAdmin(user)) return <Navigate to="/dashboard" replace />
   return <>{children}</>
 }

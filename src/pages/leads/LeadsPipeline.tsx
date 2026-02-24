@@ -28,6 +28,7 @@ import { useProfiles } from '@/hooks/useProfiles'
 import { useAssignableMembers } from '@/hooks/useTeam'
 import { createNotification } from '@/hooks/useNotifications'
 import { useAuth } from '@/hooks/useAuth'
+import { isManagerOrSuperAdmin } from '@/lib/roles'
 import { LEAD_STATUSES } from '@/lib/constants'
 import { formatCurrency, cn } from '@/lib/utils'
 import type { Lead } from '@/types'
@@ -67,7 +68,7 @@ export const LeadsPipeline = () => {
   const { platforms } = usePlatforms()
   const { profiles } = useProfiles(undefined)
   const { members: assignableMembers } = useAssignableMembers()
-  const canAssignLeads = user?.role === 'super_admin' || user?.role === 'bd_manager'
+  const canAssignLeads = isManagerOrSuperAdmin(user)
 
   const leadsByStatus = useMemo(() => {
     const map = new Map<LeadStatus, Lead[]>()
