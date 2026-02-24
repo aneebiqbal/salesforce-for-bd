@@ -18,6 +18,12 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog'
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet'
 import { toast } from 'sonner'
 import {
   ListTodo,
@@ -37,22 +43,152 @@ import type { DevTask, DevTaskStatus, UserProfile } from '@/types'
 
 const todayStr = () => new Date().toISOString().slice(0, 10)
 
+const DEV_TASK_DRAG_TYPE = 'application/x-dev-task-id'
+
+function TaskDetailSheet({
+  task,
+  getProjectName,
+  getDevName,
+  onClose,
+  onMoveStatus,
+  isDeveloper,
+}: {
+  task: DevTask
+  getProjectName: (id: string | null) => string
+  getDevName: (t: DevTask) => string
+  onClose: () => void
+  onMoveStatus: (taskId: string, status: DevTaskStatus) => void
+  isDeveloper: boolean
+}) {
+  return (
+    <Sheet open={!!task} onOpenChange={(open) => !open && onClose()}>
+      <SheetContent className="flex flex-col sm:max-w-md overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle className="pr-8">Task details</SheetTitle>
+        </SheetHeader>
+        {task && (
+          <div className="mt-4 space-y-4">
+            <div>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Title</p>
+              <p className="font-medium mt-0.5">{task.title}</p>
+            </div>
+            {task.description && (
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Description</p>
+                <p className="text-sm mt-0.5 whitespace-pre-wrap">{task.description}</p>
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Due date</p>
+                <p className="text-sm mt-0.5">
+                  {task.due_date}
+                  {task.due_time && ` ${String(task.due_time).slice(0, 5)}`}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</p>
+                <p className="text-sm mt-0.5 capitalize">{task.status?.replace('_', ' ') ?? '—'}</p>
+              </div>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Project</p>
+              <p className="text-sm mt-0.5">{getProjectName(task.project_id)}</p>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Assigned to</p>
+              <p className="text-sm mt-0.5">{getDevName(task)}</p>
+            </div>
+            <div className="grid grid-cols-2 gap-4 text-xs text-muted-foreground">
+              <div>
+                <p className="font-medium text-foreground/80">Created</p>
+                <p className="mt-0.5">{task.created_at ? new Date(task.created_at).toLocaleString() : '—'}</p>
+              </div>
+              <div>
+                <p className="font-medium text-foreground/80">Updated</p>
+                <p className="mt-0.5">{task.updated_at ? new Date(task.updated_at).toLocaleString() : '—'}</p>
+              </div>
+            </div>
+            {task.completed_at && (
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Completed at</p>
+                <p className="text-sm mt-0.5">{new Date(task.completed_at).toLocaleString()}</p>
+              </div>
+            )}
+            {isDeveloper && (
+              <div className="pt-4 border-t">
+                <Label className="text-xs">Move status</Label>
+                <Select
+                  value={task.status}
+                  onValueChange={(v) => {
+                    onMoveStatus(task.id, v as DevTaskStatus)
+                    onClose()
+                  }}
+                >
+                  <SelectTrigger className="mt-1.5">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DEV_TASK_STATUSES.map((s) => (
+                      <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
+        )}
+      </SheetContent>
+    </Sheet>
+  )
+}
+
 function TaskCard({
   task,
   onMoveStatus,
+  onOpenDetail,
   isDeveloper,
   devName,
+  isDragging,
+  onDragStart,
+  onDragEnd,
 }: {
   task: DevTask
   onMoveStatus: (taskId: string, status: DevTaskStatus) => void
+  onOpenDetail?: (task: DevTask) => void
   isDeveloper: boolean
   devName?: string
+  isDragging?: boolean
+  onDragStart?: (taskId: string) => void
+  onDragEnd?: () => void
 }) {
   const isOverdue = task.status !== 'completed' && task.due_date < todayStr()
   const dueToday = task.due_date === todayStr()
 
+  const handleDragStart = (e: React.DragEvent) => {
+    e.dataTransfer.setData(DEV_TASK_DRAG_TYPE, task.id)
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', task.title)
+    onDragStart?.(task.id)
+  }
+
+  const handleDragEnd = () => {
+    onDragEnd?.()
+  }
+
+  const handleClick = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest('[data-no-detail]')) return
+    onOpenDetail?.(task)
+  }
+
   return (
-    <Card className="group shrink-0 border bg-card shadow-sm transition-shadow hover:shadow-md">
+    <Card
+      className={`group shrink-0 border bg-card shadow-sm transition-shadow hover:shadow-md cursor-pointer ${isDragging ? 'opacity-50' : ''}`}
+      draggable={isDeveloper}
+      onDragStart={isDeveloper ? handleDragStart : undefined}
+      onDragEnd={isDeveloper ? handleDragEnd : undefined}
+      onClick={onOpenDetail ? handleClick : undefined}
+    >
       <CardContent className="p-3">
         <div className="flex items-start gap-2">
           {isDeveloper && (
@@ -86,7 +222,7 @@ function TaskCard({
           </div>
         </div>
         {isDeveloper && (
-          <div className="mt-2 pt-2 border-t">
+          <div className="mt-2 pt-2 border-t" data-no-detail>
             <Select
               value={task.status}
               onValueChange={(v) => onMoveStatus(task.id, v as DevTaskStatus)}
@@ -113,20 +249,57 @@ function BoardColumn({
   status,
   tasks,
   onMoveStatus,
+  onDrop,
+  onOpenDetail,
   isDeveloper,
   devName,
   getDevName,
+  isDropTarget,
+  draggedTaskId,
+  onDragStart,
+  onDragEnd,
+  onDragOverColumn,
+  onDragLeaveColumn,
 }: {
   status: DevTaskStatus
   tasks: DevTask[]
   onMoveStatus: (taskId: string, status: DevTaskStatus) => void
+  onDrop?: (e: React.DragEvent, newStatus: DevTaskStatus) => void
+  onOpenDetail?: (task: DevTask) => void
   isDeveloper: boolean
   devName?: string
   getDevName?: (task: DevTask) => string
+  isDropTarget?: boolean
+  draggedTaskId?: string | null
+  onDragStart?: (taskId: string) => void
+  onDragEnd?: () => void
+  onDragOverColumn?: (status: DevTaskStatus) => void
+  onDragLeaveColumn?: () => void
 }) {
   const config = DEV_TASK_STATUSES.find((s) => s.value === status) ?? { label: status, value: status }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    onDragOverColumn?.(status)
+  }
+
+  const handleDragLeave = () => {
+    onDragLeaveColumn?.()
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    onDrop?.(e, status)
+  }
+
   return (
-    <div className="flex w-64 shrink-0 flex-col rounded-lg border bg-muted/30">
+    <div
+      className={`flex w-64 shrink-0 flex-col rounded-lg border bg-muted/30 transition-colors ${isDropTarget ? 'ring-2 ring-primary/50 bg-muted/50' : ''}`}
+      onDragOver={onDrop ? handleDragOver : undefined}
+      onDragLeave={onDrop ? handleDragLeave : undefined}
+      onDrop={onDrop ? handleDrop : undefined}
+    >
       <div className="border-b px-3 py-2">
         <h3 className="text-sm font-semibold">
           {config.label}
@@ -139,8 +312,12 @@ function BoardColumn({
             key={t.id}
             task={t}
             onMoveStatus={onMoveStatus}
+            onOpenDetail={onOpenDetail}
             isDeveloper={isDeveloper}
             devName={getDevName ? getDevName(t) : devName}
+            isDragging={draggedTaskId === t.id}
+            onDragStart={onDragStart}
+            onDragEnd={onDragEnd}
           />
         ))}
       </div>
@@ -165,6 +342,9 @@ export const DevTasksPage = () => {
   const { projects } = useProjects()
   const [viewMode, setViewMode] = useState<'by_developer' | 'by_project'>('by_project')
   const [selectedProjectId, setSelectedProjectId] = useState<string>('__all__')
+  const [selectedTask, setSelectedTask] = useState<DevTask | null>(null)
+  const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null)
+  const [dragOverColumn, setDragOverColumn] = useState<DevTaskStatus | null>(null)
 
   const effectiveDevId = isManager ? (selectedDevId || devs[0]?.id || '') : userId
   const { tasks, isLoading, createTask, updateStatus } = useDevTasks(
@@ -207,6 +387,11 @@ export const DevTasksPage = () => {
     return (task: DevTask) => devs.find((d) => d.id === task.dev_id)?.full_name ?? '—'
   }, [devs])
 
+  const getProjectName = useMemo(() => {
+    return (projectId: string | null) =>
+      projectId ? (projects ?? []).find((p) => p.id === projectId)?.name ?? '—' : 'No project'
+  }, [projects])
+
   const handleCreateTask = async () => {
     const devToAssign = selectedDevId || effectiveDevId
     if (!isManager || !devToAssign || !newTitle.trim()) {
@@ -240,6 +425,13 @@ export const DevTasksPage = () => {
 
   const handleMoveStatus = (taskId: string, status: DevTaskStatus) => {
     updateStatus(taskId, status).catch(() => toast.error('Failed to update status'))
+  }
+
+  const handleDrop = (e: React.DragEvent, newStatus: DevTaskStatus) => {
+    const taskId = e.dataTransfer.getData(DEV_TASK_DRAG_TYPE)
+    if (taskId) handleMoveStatus(taskId, newStatus)
+    setDragOverColumn(null)
+    setDraggedTaskId(null)
   }
 
   const selectedDevName = useMemo(
@@ -285,10 +477,28 @@ export const DevTasksPage = () => {
                   status={s.value}
                   tasks={tasksByStatus.get(s.value) ?? []}
                   onMoveStatus={handleMoveStatus}
+                  onDrop={handleDrop}
+                  onOpenDetail={setSelectedTask}
                   isDeveloper
+                  isDropTarget={dragOverColumn === s.value}
+                  draggedTaskId={draggedTaskId}
+                  onDragStart={setDraggedTaskId}
+                  onDragEnd={() => setDraggedTaskId(null)}
+                  onDragOverColumn={setDragOverColumn}
+                  onDragLeaveColumn={() => setDragOverColumn(null)}
                 />
               ))}
             </div>
+            {selectedTask && (
+              <TaskDetailSheet
+                task={selectedTask}
+                getProjectName={getProjectName}
+                getDevName={(t) => devs.find((d) => d.id === t.dev_id)?.full_name ?? '—'}
+                onClose={() => setSelectedTask(null)}
+                onMoveStatus={handleMoveStatus}
+                isDeveloper
+              />
+            )}
           </>
         )}
       </div>
@@ -387,19 +597,32 @@ export const DevTasksPage = () => {
               ))}
             </div>
           ) : (
-            <div className="flex gap-3 overflow-x-auto pb-2">
-              {DEV_TASK_STATUSES.map((s) => (
-                <BoardColumn
-                  key={s.value}
-                  status={s.value}
-                  tasks={tasksByStatus.get(s.value) ?? []}
+            <>
+              <div className="flex gap-3 overflow-x-auto pb-2">
+                {DEV_TASK_STATUSES.map((s) => (
+                  <BoardColumn
+                    key={s.value}
+                    status={s.value}
+                    tasks={tasksByStatus.get(s.value) ?? []}
+                    onMoveStatus={() => {}}
+                    onOpenDetail={setSelectedTask}
+                    isDeveloper={false}
+                    devName={viewMode === 'by_developer' ? selectedDevName : undefined}
+                    getDevName={viewMode === 'by_project' ? getDevName : undefined}
+                  />
+                ))}
+              </div>
+              {selectedTask && (
+                <TaskDetailSheet
+                  task={selectedTask}
+                  getProjectName={getProjectName}
+                  getDevName={getDevName}
+                  onClose={() => setSelectedTask(null)}
                   onMoveStatus={() => {}}
                   isDeveloper={false}
-                  devName={viewMode === 'by_developer' ? selectedDevName : undefined}
-                  getDevName={viewMode === 'by_project' ? getDevName : undefined}
                 />
-              ))}
-            </div>
+              )}
+            </>
           )}
         </>
       )}
