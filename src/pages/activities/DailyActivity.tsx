@@ -27,12 +27,14 @@ export const DailyActivity = () => {
   const [activityDate, setActivityDate] = useState(today)
   const [sheetProfile, setSheetProfile] = useState<ProfileWithPlatform | null>(null)
 
-  const showTeamStatusOnly = user?.role === 'bd_manager' || user?.role === 'super_admin'
+  const canSeeTeamStatus = user?.role === 'bd_manager' || user?.role === 'super_admin'
+  const canLogAnyProfile = user?.role === 'super_admin' || user?.role === 'bd_manager'
   const { rows: teamStatusRows, isLoading: teamStatusLoading } = useTodayTeamStatus()
 
-  const { profiles, isLoading: profilesLoading } = useProfiles(showTeamStatusOnly ? undefined : user?.id)
+  // Super admin & BD manager: see all profiles (in scope) so they can log any. BD: only own profiles.
+  const { profiles, isLoading: profilesLoading } = useProfiles(canLogAnyProfile ? undefined : user?.id)
   const { activities, isLoading: activitiesLoading, upsertActivity } = useActivities(
-    user?.id,
+    canLogAnyProfile ? undefined : user?.id,
     activityDate,
     activityDate
   )
@@ -42,7 +44,7 @@ export const DailyActivity = () => {
   )
   const firstProfile = profiles?.[0]
   const { checkIn, checkOut, isCheckingOut, autoCheckOutPreviousSession } = useCheckIn(
-    showTeamStatusOnly ? undefined : user?.id,
+    user?.id,
     activityDate,
     firstProfile?.id ?? undefined,
     firstProfile?.platform_id ?? undefined
@@ -148,23 +150,24 @@ export const DailyActivity = () => {
     )
   }
 
-  if (showTeamStatusOnly) {
-    return (
-      <div className="space-y-5">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Team Activity Status</h1>
-          <p className="text-muted-foreground text-sm mt-0.5">
-            Who has logged activity today. Only BDs fill numbers; managers and super admins monitor here.
-          </p>
-        </div>
+  return (
+    <div className="space-y-5">
+      {/* Team status — managers and super admins see who has logged today */}
+      {canSeeTeamStatus && (
         <Card>
           <CardContent className="p-0">
+            <div className="px-4 pt-4 pb-1">
+              <h2 className="font-semibold">Team Activity Status</h2>
+              <p className="text-muted-foreground text-sm mt-0.5">
+                Who has logged today. Managers and super admins can log their own numbers below for any profile assigned to them.
+              </p>
+            </div>
             {teamStatusLoading ? (
               <div className="space-y-2 p-4">
                 {[1, 2, 3].map((i) => <Skeleton key={i} className="h-16 w-full rounded-lg" />)}
               </div>
             ) : teamStatusRows.length === 0 ? (
-              <div className="py-10 text-center text-sm text-muted-foreground">
+              <div className="py-6 px-4 text-center text-sm text-muted-foreground">
                 No team members in your scope.
               </div>
             ) : (
@@ -204,12 +207,8 @@ export const DailyActivity = () => {
             )}
           </CardContent>
         </Card>
-      </div>
-    )
-  }
+      )}
 
-  return (
-    <div className="space-y-5">
       {/* Page header */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
@@ -454,7 +453,7 @@ export const DailyActivity = () => {
         profile={sheetProfile}
         platform={sheetProfile?.platform ?? null}
         activityDate={activityDate}
-        bdMemberId={user.id}
+        bdMemberId={sheetProfile?.bd_member_id ?? user?.id ?? ''}
         existingActivity={existingForSheet}
         onSave={handleSave}
       />
