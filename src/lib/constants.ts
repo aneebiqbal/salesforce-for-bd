@@ -1,4 +1,4 @@
-import type { UserRole, LeadStatus, ProfileStatus, ProjectStatus } from '@/types'
+import type { UserRole, LeadStatus, ProfileStatus, ProjectStatus, DevTaskStatus } from '@/types'
 
 export const ROLES: { value: UserRole; label: string }[] = [
   { value: 'super_admin', label: 'Super Admin' },
@@ -26,6 +26,16 @@ export const PROJECT_STATUSES: { value: ProjectStatus; label: string }[] = [
   { value: 'completed', label: 'Completed' },
   { value: 'on_hold', label: 'On Hold' },
   { value: 'cancelled', label: 'Cancelled' },
+]
+
+/** Dev task board columns — order matches board left-to-right */
+export const DEV_TASK_STATUSES: { value: DevTaskStatus; label: string }[] = [
+  { value: 'backlog', label: 'Backlog' },
+  { value: 'ready', label: 'Ready' },
+  { value: 'in_progress', label: 'In Progress' },
+  { value: 'qa', label: 'Q/A' },
+  { value: 'in_review', label: 'In Review' },
+  { value: 'completed', label: 'Completed' },
 ]
 
 export const TARGET_METRICS: { value: string; label: string }[] = [

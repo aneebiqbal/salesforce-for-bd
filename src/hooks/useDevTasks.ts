@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import type { DevTask } from '@/types'
+import type { DevTask, DevTaskStatus } from '@/types'
+
+export const DEV_TASKS_PAGE_SIZE = 150
 
 export type DevTaskInsert = Omit<DevTask, 'id' | 'created_at' | 'updated_at'>
 export type DevTaskUpdate = Partial<Omit<DevTask, 'id' | 'created_at' | 'updated_at'>> & { id: string }
@@ -16,9 +18,9 @@ export const useDevTasks = (devId?: string) => {
       let q = supabase
         .from('dev_tasks')
         .select('*')
+        .order('updated_at', { ascending: false })
         .order('due_date', { ascending: true })
-        .order('due_time', { ascending: true, nullsFirst: false })
-        .order('created_at', { ascending: false })
+        .limit(DEV_TASKS_PAGE_SIZE)
       if (devId) q = q.eq('dev_id', devId)
       const { data, error } = await q
       if (error) throw error
@@ -61,7 +63,13 @@ export const useDevTasks = (devId?: string) => {
 
   const toggleComplete = async (task: DevTask) => {
     const completed_at = task.completed_at ? null : new Date().toISOString()
-    return updateMutation.mutateAsync({ id: task.id, completed_at })
+    const status = task.completed_at ? 'in_review' : 'completed'
+    return updateMutation.mutateAsync({ id: task.id, completed_at, status })
+  }
+
+  const updateStatus = async (taskId: string, status: DevTaskStatus) => {
+    const completed_at = status === 'completed' ? new Date().toISOString() : null
+    return updateMutation.mutateAsync({ id: taskId, status, completed_at })
   }
 
   return {
@@ -71,5 +79,6 @@ export const useDevTasks = (devId?: string) => {
     updateTask: updateMutation.mutateAsync,
     deleteTask: deleteMutation.mutateAsync,
     toggleComplete,
+    updateStatus,
   }
 }

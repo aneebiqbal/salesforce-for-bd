@@ -33,7 +33,7 @@ import { LEAD_STATUSES } from '@/lib/constants'
 import { formatCurrency, cn } from '@/lib/utils'
 import type { Lead } from '@/types'
 import type { LeadStatus } from '@/types'
-import { Trash2, Calendar, AlertCircle, Clock } from 'lucide-react'
+import { Trash2, Calendar, AlertCircle } from 'lucide-react'
 
 const STATUS_ORDER: LeadStatus[] = ['new', 'contacted', 'proposal', 'interview', 'negotiation', 'won', 'lost']
 
@@ -84,14 +84,6 @@ export const LeadsPipeline = () => {
   const overdueFollowUps = useMemo(() =>
     (leads ?? []).filter((l) =>
       l.follow_up_date && l.follow_up_date < today &&
-      l.status !== 'won' && l.status !== 'lost'
-    ),
-    [leads, today]
-  )
-
-  const dueTodayFollowUps = useMemo(() =>
-    (leads ?? []).filter((l) =>
-      l.follow_up_date === today &&
       l.status !== 'won' && l.status !== 'lost'
     ),
     [leads, today]
@@ -262,16 +254,6 @@ export const LeadsPipeline = () => {
               )}
             </div>
           </div>
-        </div>
-      )}
-
-      {!isLoading && dueTodayFollowUps.length > 0 && overdueFollowUps.length === 0 && (
-        <div className="flex items-center gap-3 rounded-lg border border-amber-300/60 bg-amber-50/50 dark:border-amber-800/40 dark:bg-amber-950/20 px-4 py-3">
-          <Clock className="size-4 text-amber-600 shrink-0" />
-          <p className="text-sm font-medium text-amber-700 dark:text-amber-300">
-            {dueTodayFollowUps.length} lead{dueTodayFollowUps.length !== 1 ? 's' : ''} to follow up with today:
-            {' '}{dueTodayFollowUps.map((l) => l.client_name).join(', ')}
-          </p>
         </div>
       )}
 
@@ -494,7 +476,11 @@ const LeadCard = memo(function LeadCard({
           {(isOverdue || isDueToday) && (
             <button
               type="button"
-              onClick={onMarkContacted}
+              onClick={(e) => {
+                e.stopPropagation()
+                e.preventDefault()
+                onMarkContacted(e)
+              }}
               className="shrink-0 text-xs font-medium text-primary hover:text-primary/80 underline underline-offset-2 transition-colors"
               title="Mark as contacted today"
             >

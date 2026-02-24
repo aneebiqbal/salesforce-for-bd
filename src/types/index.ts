@@ -151,6 +151,15 @@ export interface Project {
   updated_at: string
 }
 
+/** Dev task board column */
+export type DevTaskStatus =
+  | 'backlog'
+  | 'ready'
+  | 'in_progress'
+  | 'qa'
+  | 'in_review'
+  | 'completed'
+
 /** dev_tasks table - tasks assigned by BD manager to developer */
 export interface DevTask {
   id: string
@@ -161,6 +170,7 @@ export interface DevTask {
   description: string | null
   due_date: string
   due_time: string | null
+  status: DevTaskStatus
   completed_at: string | null
   created_at: string
   updated_at: string
