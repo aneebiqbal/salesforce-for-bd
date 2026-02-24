@@ -28,7 +28,7 @@ import { useProfiles } from '@/hooks/useProfiles'
 import { useAssignableMembers } from '@/hooks/useTeam'
 import { createNotification } from '@/hooks/useNotifications'
 import { useAuth } from '@/hooks/useAuth'
-import { isManagerOrSuperAdmin } from '@/lib/roles'
+import { isManagerOrSuperAdmin, isBd } from '@/lib/roles'
 import { LEAD_STATUSES } from '@/lib/constants'
 import { formatCurrency, cn } from '@/lib/utils'
 import type { Lead } from '@/types'
@@ -98,7 +98,8 @@ export const LeadsPipeline = () => {
   )
 
   const handleAdd = async (values: LeadFormValues) => {
-    const assigneeId = values.assigned_to || null
+    // BD can only create leads assigned to self (RLS); default so form works
+    const assigneeId = values.assigned_to || (isBd(user) ? user?.id ?? null : null) || null
     try {
       await createLead({
         client_name: values.client_name,
@@ -566,7 +567,10 @@ function LeadFormInner({
 
   const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault()
-    if (!client_name.trim()) return
+    if (!client_name.trim()) {
+      toast.error('Enter client name')
+      return
+    }
     if (!source_platform_id?.trim()) {
       toast.error('Please select a source platform')
       return

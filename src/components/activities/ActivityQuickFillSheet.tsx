@@ -560,7 +560,7 @@ export const ActivityQuickFillSheet = ({
                           source_platform_id: profile.platform_id,
                           source_profile_id: profile.id,
                           status: 'new',
-                          assigned_to: bdMemberId,
+                          assigned_to: bdMemberId || null,
                           estimated_value: leadEstimatedValue,
                           notes: null,
                           follow_up_date: null,
@@ -570,6 +570,8 @@ export const ActivityQuickFillSheet = ({
                         setLeadEstimatedValue(0)
                         setShowLeadForm(false)
                         toast.success('Lead added to your pipeline')
+                      } catch (err) {
+                        toast.error(err instanceof Error ? err.message : 'Failed to add lead')
                       } finally {
                         setLeadSaving(false)
                       }
