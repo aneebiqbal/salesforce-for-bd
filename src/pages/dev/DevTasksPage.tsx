@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import {
   Select,
   SelectContent,
@@ -18,12 +19,6 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog'
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet'
 import { toast } from 'sonner'
 import {
   ListTodo,
@@ -35,7 +30,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { isDeveloper as isDevRole, isManagerOrSuperAdmin } from '@/lib/roles'
-import { useDevTasks, type DevTaskInsert, DEV_TASKS_PAGE_SIZE } from '@/hooks/useDevTasks'
+import { useDevTasks, type DevTaskInsert, type DevTaskUpdate, DEV_TASKS_PAGE_SIZE } from '@/hooks/useDevTasks'
 import { useAssignableDevs } from '@/hooks/useTeam'
 import { useProjects } from '@/hooks/useProjects'
 import { DEV_TASK_STATUSES } from '@/lib/constants'
@@ -45,61 +40,194 @@ const todayStr = () => new Date().toISOString().slice(0, 10)
 
 const DEV_TASK_DRAG_TYPE = 'application/x-dev-task-id'
 
-function TaskDetailSheet({
+function TaskDetailModal({
   task,
   getProjectName,
   getDevName,
+  projects,
+  devs,
   onClose,
-  onMoveStatus,
+  onSave,
+  onDelete,
   isDeveloper,
+  isManager,
 }: {
   task: DevTask
   getProjectName: (id: string | null) => string
   getDevName: (t: DevTask) => string
+  projects: { id: string; name: string }[]
+  devs: UserProfile[]
   onClose: () => void
-  onMoveStatus: (taskId: string, status: DevTaskStatus) => void
+  onSave: (patch: DevTaskUpdate) => Promise<unknown>
+  onDelete: (id: string) => Promise<unknown>
   isDeveloper: boolean
+  isManager: boolean
 }) {
+  const [title, setTitle] = useState(task.title)
+  const [description, setDescription] = useState(task.description ?? '')
+  const [dueDate, setDueDate] = useState(task.due_date)
+  const [dueTime, setDueTime] = useState(task.due_time ?? '')
+  const [status, setStatus] = useState<DevTaskStatus>(task.status)
+  const [projectId, setProjectId] = useState<string>(task.project_id ?? '')
+  const [devId, setDevId] = useState(task.dev_id)
+  const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+
+  useEffect(() => {
+    setTitle(task.title)
+    setDescription(task.description ?? '')
+    setDueDate(task.due_date)
+    setDueTime(task.due_time ?? '')
+    setStatus(task.status)
+    setProjectId(task.project_id ?? '')
+    setDevId(task.dev_id)
+  }, [task])
+
+  const canEditAll = isManager
+  const canDelete = isManager
+
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      const patch: DevTaskUpdate = {
+        id: task.id,
+        title,
+        description: description.trim() || null,
+        due_date: dueDate,
+        due_time: dueTime.trim() || null,
+        status,
+        project_id: projectId || null,
+        completed_at: status === 'completed' ? new Date().toISOString() : null,
+      }
+      if (canEditAll) patch.dev_id = devId
+      await onSave(patch)
+      toast.success('Task updated')
+      onClose()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to save')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!confirmDelete) {
+      setConfirmDelete(true)
+      return
+    }
+    setDeleting(true)
+    try {
+      await onDelete(task.id)
+      toast.success('Task deleted')
+      onClose()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to delete')
+    } finally {
+      setDeleting(false)
+      setConfirmDelete(false)
+    }
+  }
+
   return (
-    <Sheet open={!!task} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent className="flex flex-col sm:max-w-md overflow-y-auto">
-        <SheetHeader>
-          <SheetTitle className="pr-8">Task details</SheetTitle>
-        </SheetHeader>
+    <Dialog open={!!task} onOpenChange={(open) => { if (!open) onClose() }}>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Task details</DialogTitle>
+        </DialogHeader>
         {task && (
-          <div className="mt-4 space-y-4">
+          <div className="space-y-4 py-2">
             <div>
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Title</p>
-              <p className="font-medium mt-0.5">{task.title}</p>
+              <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Title</Label>
+              {canEditAll ? (
+                <Input value={title} onChange={(e) => setTitle(e.target.value)} className="mt-1" placeholder="Task title" />
+              ) : (
+                <p className="font-medium mt-0.5">{task.title}</p>
+              )}
             </div>
-            {task.description && (
-              <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Description</p>
-                <p className="text-sm mt-0.5 whitespace-pre-wrap">{task.description}</p>
-              </div>
-            )}
+            <div>
+              <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Description</Label>
+              {canEditAll || isDeveloper ? (
+                <Textarea value={description} onChange={(e) => setDescription(e.target.value)} className="mt-1 min-h-[80px]" placeholder="Optional" />
+              ) : (
+                <p className="text-sm mt-0.5 whitespace-pre-wrap">{task.description || '—'}</p>
+              )}
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Due date</p>
-                <p className="text-sm mt-0.5">
-                  {task.due_date}
-                  {task.due_time && ` ${String(task.due_time).slice(0, 5)}`}
-                </p>
+                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Due date</Label>
+                {canEditAll || isDeveloper ? (
+                  <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="mt-1" />
+                ) : (
+                  <p className="text-sm mt-0.5">{task.due_date}</p>
+                )}
               </div>
               <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</p>
-                <p className="text-sm mt-0.5 capitalize">{task.status?.replace('_', ' ') ?? '—'}</p>
+                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Due time</Label>
+                {canEditAll || isDeveloper ? (
+                  <Input type="time" value={dueTime} onChange={(e) => setDueTime(e.target.value)} className="mt-1" />
+                ) : (
+                  <p className="text-sm mt-0.5">{task.due_time ? String(task.due_time).slice(0, 5) : '—'}</p>
+                )}
               </div>
             </div>
             <div>
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Project</p>
-              <p className="text-sm mt-0.5">{getProjectName(task.project_id)}</p>
+              <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</Label>
+              <Select value={status} onValueChange={(v) => setStatus(v as DevTaskStatus)}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {DEV_TASK_STATUSES.map((s) => (
+                    <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <div>
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Assigned to</p>
-              <p className="text-sm mt-0.5">{getDevName(task)}</p>
-            </div>
-            <div className="grid grid-cols-2 gap-4 text-xs text-muted-foreground">
+            {canEditAll && (
+              <>
+                <div>
+                  <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Project</Label>
+                  <Select value={projectId || 'none'} onValueChange={(v) => setProjectId(v === 'none' ? '' : v)}>
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="None" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      {projects.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Assigned to</Label>
+                  <Select value={devId} onValueChange={setDevId}>
+                    <SelectTrigger className="mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {devs.map((d) => (
+                        <SelectItem key={d.id} value={d.id}>{d.full_name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            )}
+            {!canEditAll && (
+              <>
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Project</p>
+                  <p className="text-sm mt-0.5">{getProjectName(task.project_id)}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Assigned to</p>
+                  <p className="text-sm mt-0.5">{getDevName(task)}</p>
+                </div>
+              </>
+            )}
+            <div className="grid grid-cols-2 gap-4 text-xs text-muted-foreground pt-2 border-t">
               <div>
                 <p className="font-medium text-foreground/80">Created</p>
                 <p className="mt-0.5">{task.created_at ? new Date(task.created_at).toLocaleString() : '—'}</p>
@@ -115,31 +243,26 @@ function TaskDetailSheet({
                 <p className="text-sm mt-0.5">{new Date(task.completed_at).toLocaleString()}</p>
               </div>
             )}
-            {isDeveloper && (
-              <div className="pt-4 border-t">
-                <Label className="text-xs">Move status</Label>
-                <Select
-                  value={task.status}
-                  onValueChange={(v) => {
-                    onMoveStatus(task.id, v as DevTaskStatus)
-                    onClose()
-                  }}
-                >
-                  <SelectTrigger className="mt-1.5">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {DEV_TASK_STATUSES.map((s) => (
-                      <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
           </div>
         )}
-      </SheetContent>
-    </Sheet>
+        <DialogFooter className="gap-2 sm:gap-0">
+          {canDelete && (
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={deleting}
+              className="mr-auto"
+            >
+              {confirmDelete ? 'Confirm delete' : 'Delete'}
+            </Button>
+          )}
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={handleSave} disabled={saving}>
+            {saving ? 'Saving…' : 'Save'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -148,6 +271,7 @@ function TaskCard({
   onMoveStatus,
   onOpenDetail,
   isDeveloper,
+  canDrag,
   devName,
   isDragging,
   onDragStart,
@@ -157,6 +281,7 @@ function TaskCard({
   onMoveStatus: (taskId: string, status: DevTaskStatus) => void
   onOpenDetail?: (task: DevTask) => void
   isDeveloper: boolean
+  canDrag?: boolean
   devName?: string
   isDragging?: boolean
   onDragStart?: (taskId: string) => void
@@ -164,6 +289,7 @@ function TaskCard({
 }) {
   const isOverdue = task.status !== 'completed' && task.due_date < todayStr()
   const dueToday = task.due_date === todayStr()
+  const draggable = canDrag ?? isDeveloper
 
   const handleDragStart = (e: React.DragEvent) => {
     e.dataTransfer.setData(DEV_TASK_DRAG_TYPE, task.id)
@@ -184,14 +310,14 @@ function TaskCard({
   return (
     <Card
       className={`group shrink-0 border bg-card shadow-sm transition-shadow hover:shadow-md cursor-pointer ${isDragging ? 'opacity-50' : ''}`}
-      draggable={isDeveloper}
-      onDragStart={isDeveloper ? handleDragStart : undefined}
-      onDragEnd={isDeveloper ? handleDragEnd : undefined}
+      draggable={draggable}
+      onDragStart={draggable ? handleDragStart : undefined}
+      onDragEnd={draggable ? handleDragEnd : undefined}
       onClick={onOpenDetail ? handleClick : undefined}
     >
       <CardContent className="p-3">
         <div className="flex items-start gap-2">
-          {isDeveloper && (
+          {draggable && (
             <span className="shrink-0 text-muted-foreground/50" aria-hidden>
               <GripVertical className="size-4" />
             </span>
@@ -252,6 +378,7 @@ function BoardColumn({
   onDrop,
   onOpenDetail,
   isDeveloper,
+  canDrag,
   devName,
   getDevName,
   isDropTarget,
@@ -267,6 +394,7 @@ function BoardColumn({
   onDrop?: (e: React.DragEvent, newStatus: DevTaskStatus) => void
   onOpenDetail?: (task: DevTask) => void
   isDeveloper: boolean
+  canDrag?: boolean
   devName?: string
   getDevName?: (task: DevTask) => string
   isDropTarget?: boolean
@@ -314,6 +442,7 @@ function BoardColumn({
             onMoveStatus={onMoveStatus}
             onOpenDetail={onOpenDetail}
             isDeveloper={isDeveloper}
+            canDrag={canDrag ?? isDeveloper}
             devName={getDevName ? getDevName(t) : devName}
             isDragging={draggedTaskId === t.id}
             onDragStart={onDragStart}
@@ -347,7 +476,7 @@ export const DevTasksPage = () => {
   const [dragOverColumn, setDragOverColumn] = useState<DevTaskStatus | null>(null)
 
   const effectiveDevId = isManager ? (selectedDevId || devs[0]?.id || '') : userId
-  const { tasks, isLoading, createTask, updateStatus } = useDevTasks(
+  const { tasks, isLoading, createTask, updateTask, deleteTask, updateStatus } = useDevTasks(
     isDeveloper ? userId : (viewMode === 'by_developer' && effectiveDevId ? effectiveDevId : undefined)
   )
   const allTasksForManager = useDevTasks(undefined)
@@ -490,13 +619,17 @@ export const DevTasksPage = () => {
               ))}
             </div>
             {selectedTask && (
-              <TaskDetailSheet
+              <TaskDetailModal
                 task={selectedTask}
                 getProjectName={getProjectName}
                 getDevName={(t) => devs.find((d) => d.id === t.dev_id)?.full_name ?? '—'}
+                projects={projects ?? []}
+                devs={devs}
                 onClose={() => setSelectedTask(null)}
-                onMoveStatus={handleMoveStatus}
+                onSave={updateTask}
+                onDelete={deleteTask}
                 isDeveloper
+                isManager={false}
               />
             )}
           </>
@@ -604,22 +737,34 @@ export const DevTasksPage = () => {
                     key={s.value}
                     status={s.value}
                     tasks={tasksByStatus.get(s.value) ?? []}
-                    onMoveStatus={() => {}}
+                    onMoveStatus={handleMoveStatus}
+                    onDrop={handleDrop}
                     onOpenDetail={setSelectedTask}
                     isDeveloper={false}
+                    canDrag={true}
                     devName={viewMode === 'by_developer' ? selectedDevName : undefined}
                     getDevName={viewMode === 'by_project' ? getDevName : undefined}
+                    isDropTarget={dragOverColumn === s.value}
+                    draggedTaskId={draggedTaskId}
+                    onDragStart={setDraggedTaskId}
+                    onDragEnd={() => setDraggedTaskId(null)}
+                    onDragOverColumn={setDragOverColumn}
+                    onDragLeaveColumn={() => setDragOverColumn(null)}
                   />
                 ))}
               </div>
               {selectedTask && (
-                <TaskDetailSheet
+                <TaskDetailModal
                   task={selectedTask}
                   getProjectName={getProjectName}
                   getDevName={getDevName}
+                  projects={projects ?? []}
+                  devs={devs}
                   onClose={() => setSelectedTask(null)}
-                  onMoveStatus={() => {}}
+                  onSave={allTasksForManager.updateTask}
+                  onDelete={allTasksForManager.deleteTask}
                   isDeveloper={false}
+                  isManager
                 />
               )}
             </>

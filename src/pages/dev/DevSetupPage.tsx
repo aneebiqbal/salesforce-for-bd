@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router'
+import { useNavigate, Navigate } from 'react-router'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -19,6 +19,8 @@ export const DevSetupPage = () => {
   const navigate = useNavigate()
   const [log, setLog] = useState<string[]>([])
   const [loading, setLoading] = useState<string | null>(null)
+
+  if (!import.meta.env.DEV) return <Navigate to="/dashboard" replace />
 
   const append = (msg: string) => {
     setLog((prev) => [...prev, msg])

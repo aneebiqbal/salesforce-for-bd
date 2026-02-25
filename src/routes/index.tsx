@@ -3,6 +3,7 @@ import { AppLayout } from '@/components/layout/AppLayout'
 import { ProtectedRoute } from '@/routes/ProtectedRoute'
 import { SuperAdminRoute } from '@/routes/SuperAdminRoute'
 import { ManagerRoute } from '@/routes/ManagerRoute'
+import { DevTasksRoute } from '@/routes/DevTasksRoute'
 import { Login } from '@/pages/auth/Login'
 import { Register } from '@/pages/auth/Register'
 import { SetupPage } from '@/pages/setup/SetupPage'
@@ -47,7 +48,7 @@ export const router = createBrowserRouter([
           { path: 'dev', element: <DevDashboard /> },
         ],
       },
-      { path: 'dev/tasks', element: <DevTasksPage /> },
+      { path: 'dev/tasks', element: <DevTasksRoute><DevTasksPage /></DevTasksRoute> },
       { path: 'activities', element: <DailyActivity /> },
       { path: 'activities/log', element: <ActivityLog /> },
       { path: 'leads', element: <LeadsPipeline /> },

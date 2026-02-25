@@ -93,7 +93,9 @@ export const ReportsPage = () => {
   const [filterMemberId, setFilterMemberId] = useState<string>('all')
 
   const { users: bdMembers } = useUserProfiles()
-  const bdMemberIdParam = filterMemberId === 'all' ? undefined : filterMemberId
+  const bdMemberIdParam = canSeeTeamReports
+    ? (filterMemberId === 'all' ? undefined : filterMemberId)
+    : user?.id ?? undefined
 
   const { activities, isLoading: actLoading } = useActivities(bdMemberIdParam, rangeStart, rangeEnd)
   const { leads, isLoading: leadsLoading } = useLeads()

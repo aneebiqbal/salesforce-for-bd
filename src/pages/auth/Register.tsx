@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router'
+import { Link, useNavigate, Navigate } from 'react-router'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -26,9 +26,11 @@ type RegisterForm = z.infer<typeof registerSchema>
 
 export const Register = () => {
   const navigate = useNavigate()
-  const { signUp } = useAuthContext()
+  const { signUp, session } = useAuthContext()
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+
+  if (session) return <Navigate to="/dashboard" replace />
 
   const form = useForm<RegisterForm>({
     resolver: zodResolver(registerSchema),

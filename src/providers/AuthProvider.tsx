@@ -93,7 +93,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const timeout = window.setTimeout(setDone, 5000)
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, s) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, s) => {
       if (!mounted) return
       try {
         const hadSession = hadSessionRef.current
@@ -112,9 +112,25 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
     })
 
+    const REFRESH_INTERVAL_MS = 50 * 60 * 1000
+    const refreshInterval = window.setInterval(async () => {
+      if (!mounted) return
+      try {
+        const { data: { session: s }, error } = await supabase.auth.refreshSession()
+        if (!error && s?.user?.id) {
+          setSession(s)
+          setSessionExpiredOrSignedOut(false)
+          await refreshUser(s.user.id)
+        }
+      } catch {
+        /* ignore */
+      }
+    }, REFRESH_INTERVAL_MS)
+
     return () => {
       mounted = false
       window.clearTimeout(timeout)
+      window.clearInterval(refreshInterval)
       subscription.unsubscribe()
     }
   }, [refreshUser])
