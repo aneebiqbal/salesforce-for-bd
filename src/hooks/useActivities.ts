@@ -53,6 +53,7 @@ export const useActivities = (bdMemberId?: string, start?: string, end?: string)
     },
     enabled: true,
     staleTime: 60 * 1000,
+    refetchOnWindowFocus: false,
   })
 
   const createMutation = useMutation({
@@ -68,12 +69,18 @@ export const useActivities = (bdMemberId?: string, start?: string, end?: string)
       const { data, error } = await supabase
         .from('daily_activities')
         .insert(row)
-        .select()
+        .select('*, platform:platforms!platform_id(name, display_name)')
         .single()
       if (error) throw error
       return data as DailyActivity
     },
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ACTIVITIES_QUERY_KEY }),
+    onSuccess: (saved) => {
+      queryClient.invalidateQueries({ queryKey: ACTIVITIES_QUERY_KEY })
+      queryClient.setQueryData<DailyActivity[]>(
+        [...ACTIVITIES_QUERY_KEY, bdMemberId, start, end],
+        (old) => (old ? [saved, ...old] : old)
+      )
+    },
   })
 
   const upsertMutation = useMutation({
@@ -89,12 +96,24 @@ export const useActivities = (bdMemberId?: string, start?: string, end?: string)
       const { data, error } = await supabase
         .from('daily_activities')
         .upsert(row, { onConflict: 'profile_id,activity_date' })
-        .select()
+        .select('*, platform:platforms!platform_id(name, display_name)')
         .single()
       if (error) throw error
       return data as DailyActivity
     },
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ACTIVITIES_QUERY_KEY }),
+    onSuccess: (saved) => {
+      queryClient.invalidateQueries({ queryKey: ACTIVITIES_QUERY_KEY })
+      queryClient.setQueryData<DailyActivity[]>(
+        [...ACTIVITIES_QUERY_KEY, bdMemberId, start, end],
+        (old) => {
+          if (!old) return old
+          const rest = old.filter(
+            (a) => a.profile_id !== saved.profile_id || a.activity_date !== saved.activity_date
+          )
+          return [saved, ...rest]
+        }
+      )
+    },
   })
 
   return { activities, isLoading, createActivity: createMutation.mutateAsync, upsertActivity: upsertMutation.mutateAsync, isUpserting: upsertMutation.isPending }
