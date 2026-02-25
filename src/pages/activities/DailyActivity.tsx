@@ -134,8 +134,9 @@ export const DailyActivity = () => {
       setSheetProfile(null)
       const next = getNextUnfilledProfile(sheetProfile)
       if (next) setTimeout(() => setSheetProfile(next), 400)
-    } catch {
-      toast.error('Failed to save. Please try again.')
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Failed to save'
+      toast.error(msg)
     }
   }
 
@@ -158,9 +159,7 @@ export const DailyActivity = () => {
           <CardContent className="p-0">
             <div className="px-4 pt-4 pb-1">
               <h2 className="font-semibold">Team Activity Status</h2>
-              <p className="text-muted-foreground text-sm mt-0.5">
-                Who has logged today. Managers and super admins can log their own numbers below for any profile assigned to them.
-              </p>
+              <p className="text-muted-foreground text-sm mt-0.5">Who logged today. Tap a profile below to log numbers.</p>
             </div>
             {teamStatusLoading ? (
               <div className="space-y-2 p-4">
@@ -305,7 +304,7 @@ export const DailyActivity = () => {
                 size="sm"
                 className="min-h-[40px] gap-2"
                 disabled={!checkInTime || !!checkOutTime || isCheckingOut || checkInLoading}
-                onClick={() => checkOut().then(() => toast.success('Great work! Day ended.'))}
+                onClick={() => checkOut().then(() => toast.success('Great work! Day ended.')).catch((e) => toast.error(e instanceof Error ? e.message : 'Failed to end day'))}
               >
                 <LogOut className="size-4" />
                 {isCheckingOut ? 'Ending…' : checkOutTime ? 'Day Ended' : 'End My Day'}
@@ -319,7 +318,7 @@ export const DailyActivity = () => {
       <div>
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-sm font-semibold">
-            Your Accounts
+            {canSeeTeamAndLogAny ? 'Accounts' : 'Your Accounts'}
             <span className="ml-2 font-normal text-muted-foreground">— tap a card to log numbers</span>
           </h2>
           {filledCount > 0 && (
@@ -454,6 +453,7 @@ export const DailyActivity = () => {
         platform={sheetProfile?.platform ?? null}
         activityDate={activityDate}
         bdMemberId={sheetProfile?.bd_member_id ?? user?.id ?? ''}
+        currentUserId={user?.id}
         existingActivity={existingForSheet}
         onSave={handleSave}
       />
@@ -464,7 +464,7 @@ export const DailyActivity = () => {
           className="fixed bottom-0 left-0 right-0 z-40 flex items-center justify-between border-t bg-green-600 px-6 py-4 shadow-lg"
           role="button"
           tabIndex={0}
-          onClick={() => checkOut().then(() => toast.success('Great work! Day ended.'))}
+          onClick={() => checkOut().then(() => toast.success('Great work! Day ended.')).catch((e) => toast.error(e instanceof Error ? e.message : 'Failed to end day'))}
           onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLElement).click()}
         >
           <div className="text-white">

@@ -13,7 +13,7 @@ import {
   SheetTitle,
   SheetFooter,
 } from '@/components/ui/sheet'
-import { useActivityForProfileAndDate } from '@/hooks/useActivities'
+import { useActivityForProfileAndDate, useActivities } from '@/hooks/useActivities'
 import { useTargets } from '@/hooks/useTargets'
 import { useLeads } from '@/hooks/useLeads'
 import type { ProfileWithPlatform } from '@/types'
@@ -29,6 +29,19 @@ function yesterdayOf(dateStr: string): string {
   return d.toISOString().slice(0, 10)
 }
 
+function monthStartOf(dateStr: string): string {
+  return dateStr.slice(0, 7) + '-01'
+}
+
+/** Parse "13, 15, 21" or "13 15 21" into sum */
+function parseConnectsList(input: string): number {
+  if (!input.trim()) return 0
+  return input
+    .split(/[\s,]+/)
+    .map((s) => Math.max(0, parseInt(s.trim(), 10) || 0))
+    .reduce((a, b) => a + b, 0)
+}
+
 interface ActivityQuickFillSheetProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -36,6 +49,8 @@ interface ActivityQuickFillSheetProps {
   platform: Platform | null
   activityDate: string
   bdMemberId: string
+  /** Current user id — when different from bdMemberId, label shows "Stats this month" instead of "My stats" */
+  currentUserId?: string | null
   existingActivity: DailyActivity | null
   onSave: (payload: DailyActivityInsert) => Promise<void>
 }
@@ -63,15 +78,18 @@ const defaultNumbers = {
   execution_completed: false,
   notes: '',
   remarks: '',
+  learning_minutes: null as number | null,
+  learning_activity: '',
 }
 
-type FormState = typeof defaultNumbers & { notes: string; remarks: string }
+type FormState = typeof defaultNumbers & { notes: string; remarks: string; connectsInput: string }
 
 function getInitialState(existing: DailyActivity | null): FormState {
   return {
     ...defaultNumbers,
     notes: existing?.notes ?? '',
     remarks: existing?.remarks ?? '',
+    connectsInput: existing?.connects_used != null ? String(existing.connects_used) : '',
     responses_received: existing?.responses_received ?? 0,
     leads_created: existing?.leads_created ?? 0,
     execution_completed: existing?.execution_completed ?? false,
@@ -92,6 +110,8 @@ function getInitialState(existing: DailyActivity | null): FormState {
     reply_rate: existing?.reply_rate ?? 0,
     bounced: existing?.bounced ?? 0,
     meetings_booked: existing?.meetings_booked ?? 0,
+    learning_minutes: existing?.learning_minutes ?? null,
+    learning_activity: existing?.learning_activity ?? '',
   }
 }
 
@@ -113,15 +133,25 @@ export const ActivityQuickFillSheet = ({
   platform,
   activityDate,
   bdMemberId,
+  currentUserId = null,
   existingActivity,
   onSave,
 }: ActivityQuickFillSheetProps) => {
+  const isOwnProfile = !currentUserId || bdMemberId === currentUserId
   const [state, setState] = React.useState<FormState>(() => getInitialState(existingActivity))
   const yesterdayDate = profile ? yesterdayOf(activityDate) : null
+  const monthStart = monthStartOf(activityDate)
   const { activity: yesterdayActivity } = useActivityForProfileAndDate(
     profile?.id ?? null,
     yesterdayDate
   )
+  const { activities: monthActivities } = useActivities(bdMemberId, monthStart, activityDate)
+  const myStatsMonth = React.useMemo(() => {
+    const proposals = (monthActivities ?? []).reduce((s, a) => s + (a.proposals_sent ?? 0), 0)
+    const connects = (monthActivities ?? []).reduce((s, a) => s + (a.connects_used ?? 0), 0)
+    const leads = (monthActivities ?? []).reduce((s, a) => s + (a.leads_created ?? 0), 0)
+    return { proposals, connects, leads }
+  }, [monthActivities])
   const { targets } = useTargets(bdMemberId)
   const { createLead } = useLeads()
   const [showLeadForm, setShowLeadForm] = React.useState(false)
@@ -131,12 +161,12 @@ export const ActivityQuickFillSheet = ({
   const [leadSaving, setLeadSaving] = React.useState(false)
 
   useEffect(() => {
-    if (open) {
+    if (open && profile) {
       const next = getInitialState(existingActivity ?? null)
       setState(next)
       initialSnapshotRef.current = JSON.stringify(next)
     }
-  }, [existingActivity?.id, open])
+  }, [open, profile?.id, activityDate, existingActivity?.id])
 
   const initialSnapshotRef = React.useRef<string>('')
   const copyYesterday = useCallback(() => {
@@ -151,6 +181,7 @@ export const ActivityQuickFillSheet = ({
     if (!profile || !platform) return
     setSaving(true)
     try {
+      const connectsUsed = parseConnectsList(state.connectsInput)
       const payload: DailyActivityInsert = {
         profile_id: profile.id,
         bd_member_id: bdMemberId,
@@ -160,8 +191,11 @@ export const ActivityQuickFillSheet = ({
         check_out_time: existingActivity?.check_out_time ?? null,
         ...defaultNumbers,
         ...state,
+        connects_used: connectsUsed,
         notes: state.notes || null,
         remarks: state.remarks || null,
+        learning_minutes: state.learning_minutes ?? null,
+        learning_activity: state.learning_activity?.trim() || null,
       }
       await onSave(payload)
     } finally {
@@ -252,17 +286,22 @@ export const ActivityQuickFillSheet = ({
                 size="sm"
                 className="shrink-0 text-xs"
                 onClick={copyYesterday}
-                title="Copy yesterday's numbers as a starting point (keyboard: C)"
+                title="Copy yesterday (C)"
               >
                 Copy Yesterday
               </Button>
             )}
           </div>
+          {isUpwork && (
+            <p className="text-xs rounded-md bg-primary/10 text-primary px-3 py-2 mt-2 font-medium">
+              {isOwnProfile ? 'My stats' : 'Stats'} this month: {myStatsMonth.proposals} proposals · {myStatsMonth.connects} connects · {myStatsMonth.leads} leads
+            </p>
+          )}
           {y && (
             <p className="text-xs text-muted-foreground rounded-md bg-muted px-3 py-2 mt-2">
               {isUpwork && `Yesterday: ${y.proposals_sent} proposals · ${y.connects_used} connects · ${y.warmup_messages} warmup msgs`}
-              {isLinkedIn && `Yesterday: ${y.easy_applies} easy · ${y.direct_applies} direct · ${y.indeed_applies ?? 0} indeed applies · ${y.connection_requests} connections · ${y.dms_sent} DMs`}
-              {isColdEmail && `Yesterday: ${y.emails_sent} emails sent · ${y.meetings_booked} meetings booked`}
+              {isLinkedIn && `Yesterday: ${y.easy_applies} easy · ${y.direct_applies} direct · ${y.indeed_applies ?? 0} indeed · ${y.connection_requests} connections · ${y.dms_sent} DMs`}
+              {isColdEmail && `Yesterday: ${y.emails_sent} emails · ${y.meetings_booked} meetings`}
             </p>
           )}
         </SheetHeader>
@@ -274,18 +313,13 @@ export const ActivityQuickFillSheet = ({
           <div className="px-5 py-5 space-y-4">
             <div>
               <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
-                {isUpwork ? 'Upwork Outreach' : isLinkedIn ? 'LinkedIn Activity' : 'Email Campaign'} Numbers
+                {isUpwork ? 'Upwork' : isLinkedIn ? 'LinkedIn' : 'Cold Email'} — today
               </h3>
-              <p className="text-xs text-muted-foreground mb-4">
-                {isUpwork && 'How many proposals, connects, and warmup messages did you send today on this Upwork account?'}
-                {isLinkedIn && 'Log your applies, connections, and DMs. Goal is mass volume — cold contacts get warmed up through DM follow-ups and turn into leads.'}
-                {isColdEmail && 'Record emails sent and paste open/reply rates from your email tool (Instantly, Lemlist, etc). Track bounces to keep your list clean.'}
-              </p>
 
               {isUpwork && (
                 <div className="space-y-4">
                   <div className="rounded-md bg-green-50/60 dark:bg-green-950/20 border border-green-200/60 dark:border-green-800/30 px-3 py-2 text-xs text-green-700 dark:text-green-300">
-                    <strong>Upwork goal:</strong> Send proposals &amp; follow up with invites. Clients on Upwork are fewer but warmer — quality over quantity.
+                    <strong>Upwork:</strong> Proposals &amp; connects. Quality over quantity.
                   </div>
                   <NumberStepper
                     label="Proposals Sent"
@@ -294,13 +328,21 @@ export const ActivityQuickFillSheet = ({
                     placeholder={y?.proposals_sent}
                     hint={targetHint('proposals_sent', state.proposals_sent)}
                   />
-                  <NumberStepper
-                    label="Connects Used"
-                    value={state.connects_used}
-                    onChange={(v) => setState((s) => ({ ...s, connects_used: v }))}
-                    placeholder={y?.connects_used}
-                    hint={<span className="text-muted-foreground">Credits spent — tracked but not counted as actions</span>}
-                  />
+                  <div>
+                    <Label className="text-sm font-medium">Connects Used</Label>
+                    <p className="text-xs text-muted-foreground mb-1.5">Comma-separated (e.g. 13, 15, 21)</p>
+                    <Input
+                      type="text"
+                      inputMode="numeric"
+                      placeholder={y?.connects_used != null ? String(y.connects_used) : 'e.g. 13, 15, 21'}
+                      value={state.connectsInput}
+                      onChange={(e) => setState((s) => ({ ...s, connectsInput: e.target.value }))}
+                      className="h-11"
+                    />
+                    {state.connectsInput.trim() && (
+                      <p className="text-xs text-muted-foreground mt-1">Total: {parseConnectsList(state.connectsInput)} connects</p>
+                    )}
+                  </div>
                   <NumberStepper
                     label="Warmup Messages Sent"
                     value={state.warmup_messages}
@@ -328,14 +370,14 @@ export const ActivityQuickFillSheet = ({
               {isLinkedIn && (
                 <div className="space-y-4">
                   <div className="rounded-md bg-blue-50/60 dark:bg-blue-950/20 border border-blue-200/60 dark:border-blue-800/30 px-3 py-2 text-xs text-blue-700 dark:text-blue-300">
-                    <strong>LinkedIn goal:</strong> Volume is key. Push daily limits on applies, connections &amp; DMs to build a large cold pipeline, then follow up to convert to warm leads.
+                    <strong>LinkedIn:</strong> Applies, connections &amp; DMs.
                   </div>
                   <NumberStepper
                     label="Easy Applies (1-click applies)"
                     value={state.easy_applies}
                     onChange={(v) => setState((s) => ({ ...s, easy_applies: v }))}
                     placeholder={y?.easy_applies}
-                    hint={<span className="text-muted-foreground">Via LinkedIn Easy Apply button — daily limit ~35. These are your quickest volume plays.</span>}
+                    hint={<span className="text-muted-foreground">1-click applies</span>}
                   />
                   <NumberStepper
                     label="Direct Applies (full application)"
@@ -356,14 +398,14 @@ export const ActivityQuickFillSheet = ({
                     value={state.connection_requests}
                     onChange={(v) => setState((s) => ({ ...s, connection_requests: v }))}
                     placeholder={y?.connection_requests}
-                    hint={<><span className="text-muted-foreground">Building your network — sends cold leads into your funnel. </span>{targetHint('connection_requests', state.connection_requests)}</>}
+                    hint={<>{targetHint('connection_requests', state.connection_requests)}</>}
                   />
                   <NumberStepper
                     label="DMs / Messages Sent"
                     value={state.dms_sent}
                     onChange={(v) => setState((s) => ({ ...s, dms_sent: v }))}
                     placeholder={y?.dms_sent}
-                    hint={<><span className="text-muted-foreground">Follow-up or cold DMs — converts cold connections to warm leads. </span>{targetHint('dms_sent', state.dms_sent)}</>}
+                    hint={<>{targetHint('dms_sent', state.dms_sent)}</>}
                   />
                   <NumberStepper
                     label="InMail Messages Sent"
@@ -385,7 +427,7 @@ export const ActivityQuickFillSheet = ({
               {isColdEmail && (
                 <div className="space-y-4">
                   <div className="rounded-md bg-orange-50/60 dark:bg-orange-950/20 border border-orange-200/60 dark:border-orange-800/30 px-3 py-2 text-xs text-orange-700 dark:text-orange-300">
-                    <strong>Email goal:</strong> Scale outreach volume and track open + reply rates from your email tool (e.g. Instantly, Lemlist). Good reply rate = 5%+.
+                    <strong>Cold email:</strong> Emails sent, open &amp; reply rates.
                   </div>
                   <NumberStepper
                     label="Emails Sent"
@@ -447,7 +489,7 @@ export const ActivityQuickFillSheet = ({
 
           {/* Results section */}
           <div className="border-t bg-muted/20 px-5 py-5 space-y-4">
-            <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Results & Outcomes</h3>
+            <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Results</h3>
             <NumberStepper
               label="Responses Received"
               value={state.responses_received}
@@ -463,9 +505,37 @@ export const ActivityQuickFillSheet = ({
               hint={targetHint('leads_created', state.leads_created)}
             />
 
+            {/* Other work — platform search, new profile, research, AI, etc. So admin sees where time went when targets not met */}
+            <div className="rounded-lg border border-dashed border-muted-foreground/30 bg-muted/10 px-3 py-3 space-y-3">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Other work (non-outreach)</h4>
+              <p className="text-xs text-muted-foreground">Time on e.g. searching a new platform, creating a profile, research, building AI models. Admin sees this if targets aren’t met.</p>
+              <div className="flex gap-3 items-end">
+                <div className="w-24">
+                  <Label className="text-xs">Minutes</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    placeholder="0"
+                    value={state.learning_minutes ?? ''}
+                    onChange={(e) => setState((s) => ({ ...s, learning_minutes: e.target.value === '' ? null : Math.max(0, Number(e.target.value) || 0) }))}
+                    className="h-9 mt-1"
+                  />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <Label className="text-xs">What did you do?</Label>
+                  <Input
+                    placeholder="e.g. new platform research, created profile, AI model"
+                    value={state.learning_activity}
+                    onChange={(e) => setState((s) => ({ ...s, learning_activity: e.target.value }))}
+                    className="h-9 mt-1"
+                  />
+                </div>
+              </div>
+            </div>
+
             {/* Execution complete */}
             <div
-              className={`flex min-h-[52px] cursor-pointer items-center gap-3 rounded-lg border px-3 py-2.5 transition-colors ${
+              className={`flex min-h-[44px] cursor-pointer items-center gap-3 rounded-lg border px-3 py-2.5 transition-colors ${
                 state.execution_completed
                   ? 'border-green-500/50 bg-green-500/10'
                   : 'border-border hover:bg-muted/50'
@@ -482,23 +552,16 @@ export const ActivityQuickFillSheet = ({
                 onCheckedChange={(c) => setState((s) => ({ ...s, execution_completed: !!c }))}
                 onClick={(e) => e.stopPropagation()}
               />
-              <div>
-                <Label htmlFor="exec-done" className="cursor-pointer font-medium text-sm">
-                  Mark execution as complete
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  Check this when you've finished all planned outreach for this account today.
-                </p>
-              </div>
+              <Label htmlFor="exec-done" className="cursor-pointer font-medium text-sm">Mark execution complete</Label>
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="sheet-notes" className="text-sm font-medium">Notes (optional)</Label>
+              <Label htmlFor="sheet-notes" className="text-sm font-medium">Notes</Label>
               <Textarea
                 id="sheet-notes"
                 value={state.notes}
                 onChange={(e) => setState((s) => ({ ...s, notes: e.target.value }))}
-                placeholder="Anything notable from today — e.g. 'Got 3 warm replies from health sector outreach'"
+                placeholder="Optional"
                 rows={2}
                 className="resize-none text-sm"
               />
@@ -514,10 +577,7 @@ export const ActivityQuickFillSheet = ({
                 onClick={() => setShowLeadForm(true)}
               >
                 <span className="text-lg leading-none">+</span>
-                <div className="text-left">
-                  <p className="font-medium">Add a new lead</p>
-                  <p className="text-xs">Got a promising response? Add them to your pipeline now.</p>
-                </div>
+                <p className="font-medium">Add lead to pipeline</p>
               </button>
             ) : (
               <div className="space-y-3 rounded-lg border bg-muted/30 p-4">
@@ -602,9 +662,7 @@ export const ActivityQuickFillSheet = ({
             >
               {saving ? 'Saving…' : 'Save Numbers'}
             </Button>
-            <p className="text-center text-xs text-muted-foreground">
-              Press Enter to save · Esc to close · C to copy yesterday
-            </p>
+            <p className="text-center text-xs text-muted-foreground">Enter = save · Esc = close · C = copy yesterday</p>
           </div>
         </SheetFooter>
       </SheetContent>

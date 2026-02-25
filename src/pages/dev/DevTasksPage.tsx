@@ -559,7 +559,7 @@ export const DevTasksPage = () => {
   }
 
   const handleMoveStatus = (taskId: string, status: DevTaskStatus) => {
-    updateStatus(taskId, status).catch(() => toast.error('Failed to update status'))
+    updateStatus(taskId, status).catch((e) => toast.error(e instanceof Error ? e.message : 'Failed to update status'))
   }
 
   const handleDrop = (e: React.DragEvent, newStatus: DevTaskStatus) => {

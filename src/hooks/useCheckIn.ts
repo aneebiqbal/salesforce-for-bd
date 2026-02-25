@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { ACTIVITIES_QUERY_KEY } from '@/hooks/useActivities'
+import { TODAY_TEAM_STATUS_QUERY_KEY } from '@/hooks/useTodayTeamStatus'
 
 export const CHECK_IN_QUERY_KEY = ['check-in']
 
@@ -160,5 +161,48 @@ export const useCheckIn = (bdMemberId: string | undefined, activityDate: string,
     isCheckingIn: checkInMutation.isPending,
     isCheckingOut: checkOutMutation.isPending,
     autoCheckOutPreviousSession: autoCheckOutPreviousSession.mutateAsync,
+  }
+}
+
+/** Admin/manager: clear check-out (undo mistaken check-out) or clear both check-in and check-out for a member on a date. */
+export const useClearCheckInForMember = () => {
+  const queryClient = useQueryClient()
+
+  const clearCheckOutMutation = useMutation({
+    mutationFn: async ({ bdMemberId, activityDate }: { bdMemberId: string; activityDate: string }) => {
+      const { error } = await supabase
+        .from('daily_activities')
+        .update({ check_out_time: null })
+        .eq('bd_member_id', bdMemberId)
+        .eq('activity_date', activityDate)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: CHECK_IN_QUERY_KEY })
+      queryClient.invalidateQueries({ queryKey: ACTIVITIES_QUERY_KEY })
+      queryClient.invalidateQueries({ queryKey: TODAY_TEAM_STATUS_QUERY_KEY })
+    },
+  })
+
+  const clearCheckInAndCheckOutMutation = useMutation({
+    mutationFn: async ({ bdMemberId, activityDate }: { bdMemberId: string; activityDate: string }) => {
+      const { error } = await supabase
+        .from('daily_activities')
+        .update({ check_in_time: null, check_out_time: null })
+        .eq('bd_member_id', bdMemberId)
+        .eq('activity_date', activityDate)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: CHECK_IN_QUERY_KEY })
+      queryClient.invalidateQueries({ queryKey: ACTIVITIES_QUERY_KEY })
+      queryClient.invalidateQueries({ queryKey: TODAY_TEAM_STATUS_QUERY_KEY })
+    },
+  })
+
+  return {
+    clearCheckOut: clearCheckOutMutation.mutateAsync,
+    clearCheckInAndCheckOut: clearCheckInAndCheckOutMutation.mutateAsync,
+    isClearing: clearCheckOutMutation.isPending || clearCheckInAndCheckOutMutation.isPending,
   }
 }

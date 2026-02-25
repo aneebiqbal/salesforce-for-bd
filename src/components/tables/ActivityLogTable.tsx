@@ -46,6 +46,7 @@ export const ActivityLogTable = ({ rows, isLoading, onRowClick }: ActivityLogTab
           <TableHead className="text-right">Actions</TableHead>
           <TableHead className="text-right">Response %</TableHead>
           <TableHead className="text-center">Status</TableHead>
+          <TableHead className="max-w-[180px]">Other work</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -77,6 +78,13 @@ export const ActivityLogTable = ({ rows, isLoading, onRowClick }: ActivityLogTab
               >
                 {row.execution_completed ? 'Done' : 'Pending'}
               </Badge>
+            </TableCell>
+            <TableCell className="max-w-[180px] truncate text-xs text-muted-foreground" title={row.learning_activity ?? undefined}>
+              {((row.learning_minutes != null && row.learning_minutes > 0) || (row.learning_activity && row.learning_activity.trim())) ? (
+                <>{row.learning_minutes != null && row.learning_minutes > 0 && <span className="font-medium text-foreground">{row.learning_minutes} min</span>}{(row.learning_minutes != null && row.learning_minutes > 0) && row.learning_activity?.trim() ? ' — ' : ''}{row.learning_activity?.trim() ?? ''}</>
+              ) : (
+                '—'
+              )}
             </TableCell>
           </TableRow>
         ))}

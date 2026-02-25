@@ -286,7 +286,7 @@ export const TargetsPage = () => {
                   titleClass="text-red-600 dark:text-red-400"
                   tasks={overdue}
                   memberName={memberName}
-                  onToggle={(t) => toggleComplete(t).catch(() => toast.error('Failed to update'))}
+                  onToggle={(t) => toggleComplete(t).catch((e) => toast.error(e instanceof Error ? e.message : 'Failed to update'))}
                   onEdit={(t) => { setEditingTask(t); setTaskDialogOpen(true) }}
                   onDelete={handleDeleteTask}
                 />
@@ -299,7 +299,7 @@ export const TargetsPage = () => {
                   titleClass="text-amber-600 dark:text-amber-400"
                   tasks={dueToday}
                   memberName={memberName}
-                  onToggle={(t) => toggleComplete(t).catch(() => toast.error('Failed to update'))}
+                  onToggle={(t) => toggleComplete(t).catch((e) => toast.error(e instanceof Error ? e.message : 'Failed to update'))}
                   onEdit={(t) => { setEditingTask(t); setTaskDialogOpen(true) }}
                   onDelete={handleDeleteTask}
                 />
@@ -311,7 +311,7 @@ export const TargetsPage = () => {
                   title="Upcoming"
                   tasks={upcoming}
                   memberName={memberName}
-                  onToggle={(t) => toggleComplete(t).catch(() => toast.error('Failed to update'))}
+                  onToggle={(t) => toggleComplete(t).catch((e) => toast.error(e instanceof Error ? e.message : 'Failed to update'))}
                   onEdit={(t) => { setEditingTask(t); setTaskDialogOpen(true) }}
                   onDelete={handleDeleteTask}
                 />
@@ -324,7 +324,7 @@ export const TargetsPage = () => {
                   titleClass="text-muted-foreground"
                   tasks={completed}
                   memberName={memberName}
-                  onToggle={(t) => toggleComplete(t).catch(() => toast.error('Failed to update'))}
+                  onToggle={(t) => toggleComplete(t).catch((e) => toast.error(e instanceof Error ? e.message : 'Failed to update'))}
                   onEdit={(t) => { setEditingTask(t); setTaskDialogOpen(true) }}
                   onDelete={handleDeleteTask}
                 />

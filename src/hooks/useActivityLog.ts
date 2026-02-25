@@ -10,8 +10,10 @@ export interface ActivityLogRow {
   response_rate: number
   execution_completed: boolean
   bd_member_name: string
-  profile_name: string
+  profile_name: strig
   platform_display_name: string
+  learning_minutes: number | null
+  learning_activity: string | null
 }
 
 const PAGE_SIZE = 20
@@ -35,7 +37,7 @@ export const useActivityLog = (
     queryFn: async (): Promise<{ rows: ActivityLogRow[]; total: number }> => {
       let q = supabase
         .from('daily_activities')
-        .select('id, activity_date, total_actions, response_rate, execution_completed, profile_id, bd_member_id, platform_id', { count: 'exact' })
+        .select('id, activity_date, total_actions, response_rate, execution_completed, profile_id, bd_member_id, platform_id, learning_minutes, learning_activity', { count: 'exact' })
         .order('activity_date', { ascending: false })
         .range(from, to)
 
@@ -72,6 +74,8 @@ export const useActivityLog = (
         bd_member_name: bdMap.get(r.bd_member_id) ?? '—',
         profile_name: profileMap.get(r.profile_id) ?? '—',
         platform_display_name: platformMap.get(r.platform_id) ?? '—',
+        learning_minutes: r.learning_minutes != null ? Number(r.learning_minutes) : null,
+        learning_activity: (r.learning_activity as string) || null,
       }))
 
       return { rows, total: count ?? 0 }

@@ -93,6 +93,8 @@ export interface DailyActivity {
   response_rate?: number
   check_in_time: string | null
   check_out_time: string | null
+  learning_minutes: number | null
+  learning_activity: string | null
   created_at: string
   updated_at: string
   platform?: { name: string; display_name: string } | null

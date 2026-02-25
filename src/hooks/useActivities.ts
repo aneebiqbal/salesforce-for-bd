@@ -25,6 +25,8 @@ const defaultActivityRow = {
   reply_rate: 0,
   bounced: 0,
   meetings_booked: 0,
+  learning_minutes: null as number | null,
+  learning_activity: null as string | null,
 } as const
 
 export type DailyActivityInsert = Omit<DailyActivity, 'id' | 'total_actions' | 'response_rate' | 'created_at' | 'updated_at'> & {
@@ -60,6 +62,8 @@ export const useActivities = (bdMemberId?: string, start?: string, end?: string)
         ...payload,
         notes: payload.notes ?? null,
         remarks: payload.remarks ?? null,
+        learning_minutes: payload.learning_minutes ?? null,
+        learning_activity: payload.learning_activity?.trim() || null,
       }
       const { data, error } = await supabase
         .from('daily_activities')
@@ -79,6 +83,8 @@ export const useActivities = (bdMemberId?: string, start?: string, end?: string)
         ...payload,
         notes: payload.notes ?? null,
         remarks: payload.remarks ?? null,
+        learning_minutes: payload.learning_minutes ?? null,
+        learning_activity: payload.learning_activity?.trim() || null,
       }
       const { data, error } = await supabase
         .from('daily_activities')

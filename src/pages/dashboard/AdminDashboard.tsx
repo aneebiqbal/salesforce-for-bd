@@ -13,13 +13,16 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
+import { toast } from 'sonner'
 import {
   Users, Briefcase, ClipboardList, DollarSign,
   CheckCircle2, AlertTriangle, Clock, TrendingUp,
-  Linkedin, Mail, ChevronDown, ChevronRight,
+  Linkedin, Mail, ChevronDown, ChevronRight, RotateCcw,
 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { useAdminStats } from '@/hooks/useAdminStats'
 import { useTodayTeamStatus } from '@/hooks/useTodayTeamStatus'
+import { useClearCheckInForMember } from '@/hooks/useCheckIn'
 import { useActivityTrend } from '@/hooks/useActivityTrend'
 import { useLeadPipeline } from '@/hooks/useLeadPipeline'
 import { useBDPerformance } from '@/hooks/useBDPerformance'
@@ -36,8 +39,10 @@ export const AdminDashboard = () => {
   const { data: pipelineData, isLoading: pipelineLoading } = useLeadPipeline()
   const { data: bdPerf, isLoading: bdPerfLoading } = useBDPerformance()
   const { data: recentActivities, isLoading: recentLoading } = useRecentActivities(10)
+  const { clearCheckOut, clearCheckInAndCheckOut, isClearing } = useClearCheckInForMember()
 
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+  const todayDate = new Date().toISOString().slice(0, 10)
 
   const checkedInCount = todayTeamStatus.filter((r) => r.checked_in).length
   const allDoneCount = todayTeamStatus.filter(
@@ -151,8 +156,12 @@ export const AdminDashboard = () => {
                 <TeamMemberRow
                   key={row.bd_member_id}
                   row={row}
+                  activityDate={todayDate}
                   expanded={expandedBdId === row.bd_member_id}
                   onToggle={() => setExpandedBdId((id) => id === row.bd_member_id ? null : row.bd_member_id)}
+                  onClearCheckOut={clearCheckOut}
+                  onResetCheckIn={clearCheckInAndCheckOut}
+                  isClearing={isClearing}
                 />
               ))}
             </div>
@@ -359,16 +368,25 @@ export const AdminDashboard = () => {
 
 function TeamMemberRow({
   row,
+  activityDate,
   expanded,
   onToggle,
+  onClearCheckOut,
+  onResetCheckIn,
+  isClearing,
 }: {
   row: TodayTeamStatusRow
+  activityDate: string
   expanded: boolean
   onToggle: () => void
+  onClearCheckOut: (args: { bdMemberId: string; activityDate: string }) => Promise<unknown>
+  onResetCheckIn: (args: { bdMemberId: string; activityDate: string }) => Promise<unknown>
+  isClearing: boolean
 }) {
   const allFilled = row.total_profiles > 0 && row.profiles_filled >= row.total_profiles
   const partialFilled = row.profiles_filled > 0 && !allFilled
   const notStarted = !row.checked_in && row.profiles_filled === 0
+  const hasCheckedOut = row.activities.some((a) => a.check_out_time != null)
 
   const status = allFilled ? 'done' : (partialFilled || row.checked_in) ? 'in-progress' : 'not-started'
 
@@ -383,77 +401,127 @@ function TeamMemberRow({
     ? new Date(row.last_activity_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     : null
 
+  const handleClearCheckOut = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    onClearCheckOut({ bdMemberId: row.bd_member_id, activityDate })
+      .then(() => toast.success('Check-out cleared. They can end day again when ready.'))
+      .catch((err) => toast.error(err instanceof Error ? err.message : 'Failed to clear check-out'))
+  }
+
+  const handleResetCheckIn = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!window.confirm(`Reset check-in for ${row.bd_name} for this day? They will need to check in again.`)) return
+    onResetCheckIn({ bdMemberId: row.bd_member_id, activityDate })
+      .then(() => toast.success('Check-in reset.'))
+      .catch((err) => toast.error(err instanceof Error ? err.message : 'Failed to reset'))
+  }
+
   return (
     <>
-      <button
-        type="button"
+      <div
         className={cn(
-          'w-full text-left px-5 py-4 flex items-center gap-4 hover:bg-muted/30 transition-colors',
+          'w-full px-5 py-4 flex items-center gap-4 hover:bg-muted/30 transition-colors',
           status === 'done' && 'bg-green-500/5',
           status === 'not-started' && 'bg-red-500/5',
         )}
-        onClick={onToggle}
       >
-        {/* Status dot */}
-        <div className={cn(
-          'shrink-0 size-2.5 rounded-full',
-          status === 'done' ? 'bg-green-500' :
-          status === 'in-progress' ? 'bg-amber-400' : 'bg-red-400'
-        )} />
+        <button
+          type="button"
+          className="flex items-center gap-4 min-w-0 flex-1 text-left"
+          onClick={onToggle}
+        >
+          {/* Status dot */}
+          <div className={cn(
+            'shrink-0 size-2.5 rounded-full',
+            status === 'done' ? 'bg-green-500' :
+            status === 'in-progress' ? 'bg-amber-400' : 'bg-red-400'
+          )} />
 
-        {/* Name + progress */}
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-medium">{row.bd_name}</span>
-            {status === 'done' && (
-              <Badge variant="secondary" className="text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                All done ✓
-              </Badge>
-            )}
-            {notStarted && (
-              <Badge variant="secondary" className="text-xs bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
-                Not started
-              </Badge>
-            )}
-            {lastTime && (
-              <span className="text-xs text-muted-foreground">· last active {lastTime}</span>
-            )}
-          </div>
-          {row.total_profiles > 0 && (
-            <div className="flex items-center gap-2 mt-1.5">
-              <Progress value={progressPct} className="h-1.5 w-24 flex-shrink-0" />
-              <span className="text-xs text-muted-foreground">
-                {row.profiles_filled}/{row.total_profiles} profiles logged
-              </span>
+          {/* Name + progress */}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-medium">{row.bd_name}</span>
+              {status === 'done' && (
+                <Badge variant="secondary" className="text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                  All done ✓
+                </Badge>
+              )}
+              {notStarted && (
+                <Badge variant="secondary" className="text-xs bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                  Not started
+                </Badge>
+              )}
+              {lastTime && (
+                <span className="text-xs text-muted-foreground">· last active {lastTime}</span>
+              )}
             </div>
+            {row.total_profiles > 0 && (
+              <div className="flex items-center gap-2 mt-1.5">
+                <Progress value={progressPct} className="h-1.5 w-24 flex-shrink-0" />
+                <span className="text-xs text-muted-foreground">
+                  {row.profiles_filled}/{row.total_profiles} profiles logged
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Key numbers */}
+          <div className="hidden sm:flex items-center gap-5 shrink-0 text-sm">
+            <div className="text-center">
+              <p className="font-bold tabular-nums">{totalActions}</p>
+              <p className="text-xs text-muted-foreground">actions</p>
+            </div>
+            <div className="text-center">
+              <p className={cn('font-bold tabular-nums', totalLeads > 0 ? 'text-green-600' : '')}>
+                {totalLeads}
+              </p>
+              <p className="text-xs text-muted-foreground">leads</p>
+            </div>
+            <div className="text-center">
+              <p className="font-bold tabular-nums">{totalResponses}</p>
+              <p className="text-xs text-muted-foreground">responses</p>
+            </div>
+          </div>
+
+          {/* Expand chevron */}
+          {row.activities.length > 0 && (
+            expanded
+              ? <ChevronDown className="size-4 text-muted-foreground shrink-0" />
+              : <ChevronRight className="size-4 text-muted-foreground shrink-0" />
           )}
-        </div>
+        </button>
 
-        {/* Key numbers */}
-        <div className="hidden sm:flex items-center gap-5 shrink-0 text-sm">
-          <div className="text-center">
-            <p className="font-bold tabular-nums">{totalActions}</p>
-            <p className="text-xs text-muted-foreground">actions</p>
+        {/* Admin: undo check-out / reset check-in */}
+        {(hasCheckedOut || row.checked_in) && (
+          <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+            {hasCheckedOut && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs"
+                disabled={isClearing}
+                onClick={handleClearCheckOut}
+                title="Undo mistaken check-out so they can end day again later"
+              >
+                <RotateCcw className="size-3 mr-1" />
+                Undo check-out
+              </Button>
+            )}
+            {row.checked_in && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs text-muted-foreground"
+                disabled={isClearing}
+                onClick={handleResetCheckIn}
+                title="Clear check-in and check-out for this day (they check in again)"
+              >
+                Reset check-in
+              </Button>
+            )}
           </div>
-          <div className="text-center">
-            <p className={cn('font-bold tabular-nums', totalLeads > 0 ? 'text-green-600' : '')}>
-              {totalLeads}
-            </p>
-            <p className="text-xs text-muted-foreground">leads</p>
-          </div>
-          <div className="text-center">
-            <p className="font-bold tabular-nums">{totalResponses}</p>
-            <p className="text-xs text-muted-foreground">responses</p>
-          </div>
-        </div>
-
-        {/* Expand chevron */}
-        {row.activities.length > 0 && (
-          expanded
-            ? <ChevronDown className="size-4 text-muted-foreground shrink-0" />
-            : <ChevronRight className="size-4 text-muted-foreground shrink-0" />
         )}
-      </button>
+      </div>
 
       {/* Expanded detail */}
       {expanded && row.activities.length > 0 && (

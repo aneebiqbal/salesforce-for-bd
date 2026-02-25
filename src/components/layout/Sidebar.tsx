@@ -24,23 +24,23 @@ import { isSuperAdmin, isManagerOrSuperAdmin, isDeveloper } from '@/lib/roles'
 import { Separator } from '@/components/ui/separator'
 
 const navItems: { to: string; label: string; sublabel: string; icon: typeof LayoutDashboard; managerOrSuperAdminOnly?: boolean }[] = [
-  { to: '/dashboard', label: 'Dashboard', sublabel: 'Your daily overview', icon: LayoutDashboard },
-  { to: '/activities', label: 'Log Activity', sublabel: 'Fill today\'s numbers', icon: CalendarCheck },
-  { to: '/activities/log', label: 'Activity History', sublabel: 'Past logged days', icon: History },
-  { to: '/leads', label: 'Leads Pipeline', sublabel: 'Track prospects', icon: Kanban },
-  { to: '/profiles', label: 'Accounts', sublabel: 'Managed profiles', icon: Users },
-  { to: '/team', label: 'Team Members', sublabel: 'Manage BD team', icon: UserCog, managerOrSuperAdminOnly: true },
-  { to: '/targets', label: 'Goals & Targets', sublabel: 'Performance targets', icon: Target },
-  { to: '/projects', label: 'Projects', sublabel: 'Won projects', icon: FolderKanban },
-  { to: '/dev/tasks', label: 'Assign Dev Tasks', sublabel: 'Assign tasks to developers', icon: ListTodo, managerOrSuperAdminOnly: true },
-  { to: '/reports', label: 'Reports', sublabel: 'Analytics & export', icon: BarChart3 },
-  { to: '/settings', label: 'Settings', sublabel: 'Account & appearance', icon: Settings, managerOrSuperAdminOnly: true },
+  { to: '/dashboard', label: 'Dashboard', sublabel: 'Overview', icon: LayoutDashboard },
+  { to: '/activities', label: 'Log Activity', sublabel: 'Daily numbers', icon: CalendarCheck },
+  { to: '/activities/log', label: 'Activity History', sublabel: 'Past days', icon: History },
+  { to: '/leads', label: 'Leads', sublabel: 'Pipeline', icon: Kanban },
+  { to: '/profiles', label: 'Accounts', sublabel: 'Profiles', icon: Users },
+  { to: '/team', label: 'Team', sublabel: 'Members', icon: UserCog, managerOrSuperAdminOnly: true },
+  { to: '/targets', label: 'Targets', sublabel: 'Goals', icon: Target },
+  { to: '/projects', label: 'Projects', sublabel: 'Won deals', icon: FolderKanban },
+  { to: '/dev/tasks', label: 'Dev Tasks', sublabel: 'Board', icon: ListTodo, managerOrSuperAdminOnly: true },
+  { to: '/reports', label: 'Reports', sublabel: 'Analytics', icon: BarChart3 },
+  { to: '/settings', label: 'Settings', sublabel: 'Account', icon: Settings, managerOrSuperAdminOnly: true },
 ]
 
 const devNavItems: { to: string; label: string; sublabel: string; icon: typeof LayoutDashboard }[] = [
-  { to: '/dashboard', label: 'Dashboard', sublabel: 'Check-in & overview', icon: LayoutDashboard },
-  { to: '/dev/tasks', label: 'My Tasks', sublabel: 'Tasks assigned to you', icon: ListTodo },
-  { to: '/projects', label: 'Projects', sublabel: 'Assigned projects', icon: FolderKanban },
+  { to: '/dashboard', label: 'Dashboard', sublabel: 'Overview', icon: LayoutDashboard },
+  { to: '/dev/tasks', label: 'My Tasks', sublabel: 'Board', icon: ListTodo },
+  { to: '/projects', label: 'Projects', sublabel: 'Assigned', icon: FolderKanban },
 ]
 
 export const Sidebar = () => {

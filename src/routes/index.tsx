@@ -4,6 +4,7 @@ import { ProtectedRoute } from '@/routes/ProtectedRoute'
 import { SuperAdminRoute } from '@/routes/SuperAdminRoute'
 import { ManagerRoute } from '@/routes/ManagerRoute'
 import { DevTasksRoute } from '@/routes/DevTasksRoute'
+import { BDRoute } from '@/routes/BDRoute'
 import { Login } from '@/pages/auth/Login'
 import { Register } from '@/pages/auth/Register'
 import { SetupPage } from '@/pages/setup/SetupPage'
@@ -49,14 +50,14 @@ export const router = createBrowserRouter([
         ],
       },
       { path: 'dev/tasks', element: <DevTasksRoute><DevTasksPage /></DevTasksRoute> },
-      { path: 'activities', element: <DailyActivity /> },
-      { path: 'activities/log', element: <ActivityLog /> },
-      { path: 'leads', element: <LeadsPipeline /> },
-      { path: 'profiles', element: <ProfilesManagement /> },
+      { path: 'activities', element: <BDRoute><DailyActivity /></BDRoute> },
+      { path: 'activities/log', element: <BDRoute><ActivityLog /></BDRoute> },
+      { path: 'leads', element: <BDRoute><LeadsPipeline /></BDRoute> },
+      { path: 'profiles', element: <BDRoute><ProfilesManagement /></BDRoute> },
       { path: 'team', element: <ManagerRoute><TeamManagement /></ManagerRoute> },
-      { path: 'targets', element: <TargetsPage /> },
+      { path: 'targets', element: <BDRoute><TargetsPage /></BDRoute> },
       { path: 'projects', element: <ProjectsPage /> },
-      { path: 'reports', element: <ReportsPage /> },
+      { path: 'reports', element: <BDRoute><ReportsPage /></BDRoute> },
       { path: 'settings', element: <ManagerRoute><SettingsPage /></ManagerRoute> },
     ],
   },
