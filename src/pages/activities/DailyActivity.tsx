@@ -128,8 +128,13 @@ export const DailyActivity = () => {
   }
 
   const handleSave = async (payload: Parameters<typeof upsertActivity>[0]) => {
+    if (!user) return
+    const safePayload = { ...payload }
+    if (!canSeeTeamAndLogAny && safePayload.bd_member_id !== user.id) {
+      safePayload.bd_member_id = user.id
+    }
     try {
-      await upsertActivity(payload)
+      await upsertActivity(safePayload)
       const name = sheetProfile?.name ?? 'Profile'
       const remaining = Math.max(0, unfilledProfiles.length - 1)
       if (remaining === 0) {
