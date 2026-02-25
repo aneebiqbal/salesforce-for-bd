@@ -6,22 +6,25 @@ export const PROFILES_QUERY_KEY = ['profiles']
 
 export type ProfileInsert = Omit<Profile, 'id' | 'created_at' | 'updated_at'>
 
-export const useProfiles = (bdMemberId?: string) => {
+/** Scope: undefined = all (super_admin only); string = single bd_member_id; string[] = only these bd_member_ids (e.g. manager's team). */
+export const useProfiles = (scope?: string | string[]) => {
   const queryClient = useQueryClient()
+  const scopeKey = Array.isArray(scope) ? scope.slice().sort().join(',') : scope ?? '__all__'
 
   const { data: profiles = [], isLoading } = useQuery({
-    queryKey: [...PROFILES_QUERY_KEY, bdMemberId],
+    queryKey: [...PROFILES_QUERY_KEY, scopeKey],
     queryFn: async (): Promise<ProfileWithPlatform[]> => {
       let q = supabase
         .from('profiles')
         .select('*, platform:platforms!platform_id(id, name, display_name, is_active, created_at)')
         .order('name')
-      if (bdMemberId) q = q.eq('bd_member_id', bdMemberId)
+      if (typeof scope === 'string') q = q.eq('bd_member_id', scope)
+      else if (Array.isArray(scope) && scope.length > 0) q = q.in('bd_member_id', scope)
       const { data, error } = await q
       if (error) throw error
       return (data ?? []) as ProfileWithPlatform[]
     },
-    enabled: true,
+    enabled: scope === undefined || (typeof scope === 'string' && scope.length > 0) || (Array.isArray(scope) && scope.length > 0),
     staleTime: 5 * 60 * 1000,
   })
 

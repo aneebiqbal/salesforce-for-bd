@@ -34,24 +34,27 @@ export type DailyActivityInsert = Omit<DailyActivity, 'id' | 'total_actions' | '
   remarks?: string | null
 }
 
-export const useActivities = (bdMemberId?: string, start?: string, end?: string) => {
+/** Scope: undefined = all (super_admin only); string = single bd_member_id; string[] = only these bd_member_ids (e.g. manager's team). */
+export const useActivities = (scope?: string | string[], start?: string, end?: string) => {
   const queryClient = useQueryClient()
+  const scopeKey = Array.isArray(scope) ? scope.slice().sort().join(',') : scope ?? '__all__'
 
   const { data: activities = [], isLoading } = useQuery({
-    queryKey: [...ACTIVITIES_QUERY_KEY, bdMemberId, start, end],
+    queryKey: [...ACTIVITIES_QUERY_KEY, scopeKey, start, end],
     queryFn: async (): Promise<DailyActivity[]> => {
       let q = supabase
         .from('daily_activities')
         .select('*, platform:platforms!platform_id(name, display_name)')
         .order('activity_date', { ascending: false })
-      if (bdMemberId) q = q.eq('bd_member_id', bdMemberId)
+      if (typeof scope === 'string') q = q.eq('bd_member_id', scope)
+      else if (Array.isArray(scope) && scope.length > 0) q = q.in('bd_member_id', scope)
       if (start) q = q.gte('activity_date', start)
       if (end) q = q.lte('activity_date', end)
       const { data, error } = await q
       if (error) throw error
       return (data ?? []) as DailyActivity[]
     },
-    enabled: true,
+    enabled: scope === undefined || (typeof scope === 'string' && scope.length > 0) || (Array.isArray(scope) && scope.length > 0),
     staleTime: 60 * 1000,
     refetchOnWindowFocus: false,
   })
@@ -77,7 +80,7 @@ export const useActivities = (bdMemberId?: string, start?: string, end?: string)
     onSuccess: (saved) => {
       queryClient.invalidateQueries({ queryKey: ACTIVITIES_QUERY_KEY })
       queryClient.setQueryData<DailyActivity[]>(
-        [...ACTIVITIES_QUERY_KEY, bdMemberId, start, end],
+        [...ACTIVITIES_QUERY_KEY, scopeKey, start, end],
         (old) => (old ? [saved, ...old] : old)
       )
     },
@@ -104,7 +107,7 @@ export const useActivities = (bdMemberId?: string, start?: string, end?: string)
     onSuccess: (saved) => {
       queryClient.invalidateQueries({ queryKey: ACTIVITIES_QUERY_KEY })
       queryClient.setQueryData<DailyActivity[]>(
-        [...ACTIVITIES_QUERY_KEY, bdMemberId, start, end],
+        [...ACTIVITIES_QUERY_KEY, scopeKey, start, end],
         (old) => {
           if (!old) return old
           const rest = old.filter(

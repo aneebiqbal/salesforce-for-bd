@@ -8,11 +8,12 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Progress } from '@/components/ui/progress'
 import { ActivityQuickFillSheet } from '@/components/activities/ActivityQuickFillSheet'
 import { useAuth } from '@/hooks/useAuth'
-import { isManagerOrSuperAdmin, isSuperAdmin } from '@/lib/roles'
+import { isManagerOrSuperAdmin, isSuperAdmin, isBdManager } from '@/lib/roles'
 import { useProfiles } from '@/hooks/useProfiles'
 import { useActivities } from '@/hooks/useActivities'
 import { useCheckInStatus, useCheckIn } from '@/hooks/useCheckIn'
 import { useTodayTeamStatus } from '@/hooks/useTodayTeamStatus'
+import { useTeamMembers } from '@/hooks/useTeam'
 import type { ProfileWithPlatform, DailyActivity as DailyActivityType } from '@/types'
 import { Link } from 'react-router'
 import {
@@ -29,12 +30,17 @@ export const DailyActivity = () => {
   const [sheetProfile, setSheetProfile] = useState<ProfileWithPlatform | null>(null)
 
   const canSeeTeamAndLogAny = isManagerOrSuperAdmin(user)
+  const isAdmin = isSuperAdmin(user)
+  const { members: teamMembers } = useTeamMembers()
+  const teamMemberIds = isBdManager(user) ? teamMembers.map((m) => m.id) : []
+
   const { rows: teamStatusRows, isLoading: teamStatusLoading } = useTodayTeamStatus()
 
-  // Super admin & BD manager: see all profiles (in scope) so they can log any. BD: only own profiles.
-  const { profiles, isLoading: profilesLoading } = useProfiles(canSeeTeamAndLogAny ? undefined : user?.id)
+  // Super admin: all profiles and log any. Manager: only assigned team's profiles. BD: only own assigned profiles.
+  const profileScope = isAdmin ? undefined : isBdManager(user) ? teamMemberIds : user?.id
+  const { profiles, isLoading: profilesLoading } = useProfiles(profileScope)
   const { activities, isLoading: activitiesLoading, upsertActivity } = useActivities(
-    canSeeTeamAndLogAny ? undefined : user?.id,
+    profileScope,
     activityDate,
     activityDate
   )
@@ -318,7 +324,7 @@ export const DailyActivity = () => {
       <div>
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-sm font-semibold">
-            {canSeeTeamAndLogAny ? 'Accounts' : 'Your Accounts'}
+            {isAdmin ? 'Accounts' : isBdManager(user) ? 'Team accounts' : 'Your accounts'}
             <span className="ml-2 font-normal text-muted-foreground">— tap a card to log numbers</span>
           </h2>
           {filledCount > 0 && (
