@@ -10,7 +10,7 @@ export interface ActivityLogRow {
   response_rate: number
   execution_completed: boolean
   bd_member_name: string
-  profile_name: strig
+  profile_name: string
   platform_display_name: string
   learning_minutes: number | null
   learning_activity: string | null
