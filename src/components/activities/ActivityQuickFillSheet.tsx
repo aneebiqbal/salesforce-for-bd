@@ -182,6 +182,7 @@ export const ActivityQuickFillSheet = ({
     setSaving(true)
     try {
       const connectsUsed = parseConnectsList(state.connectsInput)
+      const { connectsInput: _connectsInput, ...stateForDb } = state
       const payload: DailyActivityInsert = {
         profile_id: profile.id,
         bd_member_id: bdMemberId,
@@ -190,7 +191,7 @@ export const ActivityQuickFillSheet = ({
         check_in_time: existingActivity?.check_in_time ?? null,
         check_out_time: existingActivity?.check_out_time ?? null,
         ...defaultNumbers,
-        ...state,
+        ...stateForDb,
         connects_used: connectsUsed,
         notes: state.notes || null,
         remarks: state.remarks || null,
