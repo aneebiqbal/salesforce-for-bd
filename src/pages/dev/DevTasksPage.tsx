@@ -272,6 +272,7 @@ function TaskCard({
   onOpenDetail,
   isDeveloper,
   canDrag,
+  canChangeStatus,
   devName,
   isDragging,
   onDragStart,
@@ -282,6 +283,7 @@ function TaskCard({
   onOpenDetail?: (task: DevTask) => void
   isDeveloper: boolean
   canDrag?: boolean
+  canChangeStatus?: boolean
   devName?: string
   isDragging?: boolean
   onDragStart?: (taskId: string) => void
@@ -290,6 +292,7 @@ function TaskCard({
   const isOverdue = task.status !== 'completed' && task.due_date < todayStr()
   const dueToday = task.due_date === todayStr()
   const draggable = canDrag ?? isDeveloper
+  const showStatusDropdown = isDeveloper || canChangeStatus
 
   const handleDragStart = (e: React.DragEvent) => {
     e.dataTransfer.setData(DEV_TASK_DRAG_TYPE, task.id)
@@ -347,7 +350,7 @@ function TaskCard({
             )}
           </div>
         </div>
-        {isDeveloper && (
+        {showStatusDropdown && (
           <div className="mt-2 pt-2 border-t" data-no-detail>
             <Select
               value={task.status}
@@ -379,6 +382,7 @@ function BoardColumn({
   onOpenDetail,
   isDeveloper,
   canDrag,
+  canChangeStatus,
   devName,
   getDevName,
   isDropTarget,
@@ -395,6 +399,7 @@ function BoardColumn({
   onOpenDetail?: (task: DevTask) => void
   isDeveloper: boolean
   canDrag?: boolean
+  canChangeStatus?: boolean
   devName?: string
   getDevName?: (task: DevTask) => string
   isDropTarget?: boolean
@@ -443,6 +448,7 @@ function BoardColumn({
             onOpenDetail={onOpenDetail}
             isDeveloper={isDeveloper}
             canDrag={canDrag ?? isDeveloper}
+            canChangeStatus={canChangeStatus ?? isDeveloper}
             devName={getDevName ? getDevName(t) : devName}
             isDragging={draggedTaskId === t.id}
             onDragStart={onDragStart}
@@ -652,7 +658,7 @@ export const DevTasksPage = () => {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Dev Task Board</h1>
           <p className="text-muted-foreground">
-            View tasks by project or by developer. Assign tasks and watch tickets move.
+            View by project or developer. Assign tasks, drag tickets between columns, or use the status dropdown on each card.
           </p>
         </div>
         <Button onClick={() => setDialogOpen(true)} className="gap-2 shrink-0">
@@ -742,6 +748,7 @@ export const DevTasksPage = () => {
                     onOpenDetail={setSelectedTask}
                     isDeveloper={false}
                     canDrag={true}
+                    canChangeStatus={true}
                     devName={viewMode === 'by_developer' ? selectedDevName : undefined}
                     getDevName={viewMode === 'by_project' ? getDevName : undefined}
                     isDropTarget={dragOverColumn === s.value}
