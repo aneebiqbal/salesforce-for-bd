@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/select'
 import { Link } from 'react-router'
 import { useAuth } from '@/hooks/useAuth'
-import { isSuperAdmin, isManagerOrSuperAdmin } from '@/lib/roles'
+import { isSuperAdmin, isManagerOrSuperAdmin, isDeveloper } from '@/lib/roles'
 import { useProjects } from '@/hooks/useProjects'
 import { useProjectDevelopers } from '@/hooks/useProjectDevelopers'
 import { useAssignableDevs } from '@/hooks/useTeam'
@@ -153,7 +153,9 @@ export const ProjectsPage = () => {
                   </Badge>
                 </div>
                 <p className="text-sm text-muted-foreground">{project.client_name}</p>
-                <p className="text-sm font-medium text-primary">{formatCurrency(project.revenue)}</p>
+                {!isDeveloper(user) && (
+                  <p className="text-sm font-medium text-primary">{formatCurrency(project.revenue)}</p>
+                )}
                 {project.assigned_developers?.length > 0 && (
                   <div className="flex flex-wrap gap-1">
                     {project.assigned_developers.map((d) => (
