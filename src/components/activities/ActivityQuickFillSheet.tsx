@@ -146,12 +146,25 @@ export const ActivityQuickFillSheet = ({
     yesterdayDate
   )
   const { activities: monthActivities } = useActivities(bdMemberId, monthStart, activityDate)
+  const { activities: loggerMonthActivities } = useActivities(
+    isOwnProfile ? [] : (currentUserId ?? ''),
+    monthStart,
+    activityDate
+  )
   const myStatsMonth = React.useMemo(() => {
     const proposals = (monthActivities ?? []).reduce((s, a) => s + (a.proposals_sent ?? 0), 0)
     const connects = (monthActivities ?? []).reduce((s, a) => s + (a.connects_used ?? 0), 0)
     const leads = (monthActivities ?? []).reduce((s, a) => s + (a.leads_created ?? 0), 0)
     return { proposals, connects, leads }
   }, [monthActivities])
+  const loggerStatsMonth = React.useMemo(() => {
+    const list = loggerMonthActivities ?? []
+    return {
+      proposals: list.reduce((s, a) => s + (a.proposals_sent ?? 0), 0),
+      connects: list.reduce((s, a) => s + (a.connects_used ?? 0), 0),
+      leads: list.reduce((s, a) => s + (a.leads_created ?? 0), 0),
+    }
+  }, [loggerMonthActivities])
   const { targets } = useTargets(bdMemberId)
   const { createLead } = useLeads()
   const [showLeadForm, setShowLeadForm] = React.useState(false)
@@ -295,7 +308,7 @@ export const ActivityQuickFillSheet = ({
           </div>
           {isUpwork && (
             <p className="text-xs rounded-md bg-primary/10 text-primary px-3 py-2 mt-2 font-medium">
-              {isOwnProfile ? 'My stats' : 'Stats'} this month: {myStatsMonth.proposals} proposals · {myStatsMonth.connects} connects · {myStatsMonth.leads} leads
+              {isOwnProfile ? 'My stats' : 'Your stats'} this month: {isOwnProfile ? myStatsMonth.proposals : loggerStatsMonth.proposals} proposals · {isOwnProfile ? myStatsMonth.connects : loggerStatsMonth.connects} connects · {isOwnProfile ? myStatsMonth.leads : loggerStatsMonth.leads} leads
             </p>
           )}
           {y && (

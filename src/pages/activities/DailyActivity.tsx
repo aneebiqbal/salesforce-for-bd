@@ -8,12 +8,11 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Progress } from '@/components/ui/progress'
 import { ActivityQuickFillSheet } from '@/components/activities/ActivityQuickFillSheet'
 import { useAuth } from '@/hooks/useAuth'
-import { isManagerOrSuperAdmin, isSuperAdmin, isBdManager } from '@/lib/roles'
+import { isManagerOrSuperAdmin, isSuperAdmin } from '@/lib/roles'
 import { useProfiles } from '@/hooks/useProfiles'
 import { useActivities } from '@/hooks/useActivities'
 import { useCheckInStatus, useCheckIn } from '@/hooks/useCheckIn'
 import { useTodayTeamStatus } from '@/hooks/useTodayTeamStatus'
-import { useTeamMembers } from '@/hooks/useTeam'
 import type { ProfileWithPlatform, DailyActivity as DailyActivityType } from '@/types'
 import { Link } from 'react-router'
 import {
@@ -31,13 +30,10 @@ export const DailyActivity = () => {
 
   const canSeeTeamAndLogAny = isManagerOrSuperAdmin(user)
   const isAdmin = isSuperAdmin(user)
-  const { members: teamMembers } = useTeamMembers()
-  const teamMemberIds = isBdManager(user) ? teamMembers.map((m) => m.id) : []
-
   const { rows: teamStatusRows, isLoading: teamStatusLoading } = useTodayTeamStatus()
 
-  // Super admin: all profiles and log any. Manager: only assigned team's profiles. BD: only own assigned profiles.
-  const profileScope = isAdmin ? undefined : isBdManager(user) ? teamMemberIds : user?.id
+  // Admin: all profiles. Manager & BD: only accounts assigned to them by admin (bd_member_id = user).
+  const profileScope = isAdmin ? undefined : user?.id
   const { profiles, isLoading: profilesLoading } = useProfiles(profileScope)
   const { activities, isLoading: activitiesLoading, upsertActivity } = useActivities(
     profileScope,
@@ -162,24 +158,24 @@ export const DailyActivity = () => {
     )
   }
 
+  const accountsLabel = isAdmin ? 'All accounts' : 'Your accounts'
+
   return (
     <div className="space-y-5">
-      {/* Team status — managers and super admins see who has logged today */}
-      {canSeeTeamAndLogAny && (
+      {/* Team status — admin only; manager sees BD status on Dashboard */}
+      {isAdmin && (
         <Card>
           <CardContent className="p-0">
             <div className="px-4 pt-4 pb-1">
-              <h2 className="font-semibold">Team Activity Status</h2>
-              <p className="text-muted-foreground text-sm mt-0.5">Who logged today. Tap a profile below to log numbers.</p>
+              <h2 className="font-semibold">Team status today</h2>
+              <p className="text-muted-foreground text-sm mt-0.5">Who has logged. Tap a profile below to log for anyone.</p>
             </div>
             {teamStatusLoading ? (
               <div className="space-y-2 p-4">
                 {[1, 2, 3].map((i) => <Skeleton key={i} className="h-16 w-full rounded-lg" />)}
               </div>
             ) : teamStatusRows.length === 0 ? (
-              <div className="py-6 px-4 text-center text-sm text-muted-foreground">
-                No team members in your scope.
-              </div>
+              <div className="py-6 px-4 text-center text-sm text-muted-foreground">No team members.</div>
             ) : (
               <div className="divide-y">
                 {teamStatusRows.map((row) => {
@@ -202,14 +198,11 @@ export const DailyActivity = () => {
                         <div>
                           <p className="font-medium">{row.bd_name}</p>
                           <p className="text-xs text-muted-foreground">
-                            {row.profiles_filled}/{row.total_profiles} profiles · {allFilled ? 'Done' : row.checked_in ? 'In progress' : 'Not started'}
+                            {row.profiles_filled}/{row.total_profiles} · {allFilled ? 'Done' : row.checked_in ? 'In progress' : 'Not started'}
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Progress value={progressPct} className="h-2 w-20" />
-                        <span className="text-sm tabular-nums text-muted-foreground">{progressPct}%</span>
-                      </div>
+                      <Progress value={progressPct} className="h-2 w-20" />
                     </div>
                   )
                 })}
@@ -219,42 +212,25 @@ export const DailyActivity = () => {
         </Card>
       )}
 
-      {/* Page header */}
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      {/* Header: title + date */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Log Today's Activity</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Log Activity</h1>
           <p className="text-muted-foreground text-sm mt-0.5">
-            Log your numbers right after each outreach session — proposals sent, applies done, DMs sent.
+            {isAdmin ? 'Log for any account.' : 'Log your numbers for your assigned accounts.'}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5 rounded-md border border-input bg-background px-3 py-2">
-            <Calendar className="size-4 text-muted-foreground" />
-            <Input
-              id="activity-date"
-              type="date"
-              value={activityDate}
-              onChange={(e) => setActivityDate(e.target.value)}
-              className="h-auto border-0 bg-transparent p-0 text-sm focus-visible:ring-0"
-            />
-          </div>
+        <div className="flex items-center gap-1.5 rounded-md border border-input bg-background px-3 py-2">
+          <Calendar className="size-4 text-muted-foreground" />
+          <Input
+            id="activity-date"
+            type="date"
+            value={activityDate}
+            onChange={(e) => setActivityDate(e.target.value)}
+            className="h-auto border-0 bg-transparent p-0 text-sm focus-visible:ring-0"
+          />
         </div>
       </div>
-
-      {/* Workflow tip — shown until first profile is logged */}
-      {!activitiesLoading && activities.length === 0 && profiles && profiles.length > 0 && (
-        <div className="flex items-start gap-3 rounded-lg border border-blue-200 bg-blue-50/50 dark:border-blue-800/40 dark:bg-blue-950/20 px-4 py-3">
-          <span className="text-lg leading-none mt-0.5">💡</span>
-          <div className="text-sm">
-            <p className="font-medium text-blue-900 dark:text-blue-100">Log right after you finish each account's outreach session.</p>
-            <p className="text-blue-700/80 dark:text-blue-300/80 mt-0.5">
-              <strong>LinkedIn:</strong> Easy applies, connection requests &amp; DMs — volume is key, push daily limits.
-              &nbsp;<strong>Upwork:</strong> Proposals &amp; connects used.
-              &nbsp;<strong>Email:</strong> Emails sent + open rate from your dashboard.
-            </p>
-          </div>
-        </div>
-      )}
 
       {/* Session status bar */}
       <Card className={cn(
@@ -329,8 +305,8 @@ export const DailyActivity = () => {
       <div>
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-sm font-semibold">
-            {isAdmin ? 'Accounts' : isBdManager(user) ? 'Team accounts' : 'Your accounts'}
-            <span className="ml-2 font-normal text-muted-foreground">— tap a card to log numbers</span>
+            {accountsLabel}
+            <span className="ml-2 font-normal text-muted-foreground">— tap to log</span>
           </h2>
           {filledCount > 0 && (
             <span className="text-xs text-muted-foreground">
