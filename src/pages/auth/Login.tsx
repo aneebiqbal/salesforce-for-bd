@@ -70,14 +70,7 @@ export const Login = () => {
     <AuthLayout
       title="Welcome back"
       subtitle="Sign in with your email and password to continue."
-      footer={
-        <p className="text-sm text-muted-foreground">
-          Don’t have an account?{' '}
-          <Link to="/register" className="font-medium text-foreground underline underline-offset-4 hover:text-primary">
-            Create one
-          </Link>
-        </p>
-      }
+      footer={null}
     >
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
         {error && (

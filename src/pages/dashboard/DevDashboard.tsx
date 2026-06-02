@@ -9,7 +9,7 @@ import { useDevAttendance } from '@/hooks/useDevAttendance'
 
 export const DevDashboard = () => {
   const { user } = useAuth()
-  const userId = user?.id ?? ''
+  const userId = user?.id
   const today = new Date().toISOString().slice(0, 10)
 
   const { record, isLoading: attendanceLoading, checkIn, checkOut } = useDevAttendance(userId, today)

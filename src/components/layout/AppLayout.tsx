@@ -12,7 +12,7 @@ import type { BDContext } from '@/hooks/useAICoach'
 
 export const AppLayout = () => {
   const { user } = useAuthContext()
-  const userId = user?.id ?? ''
+  const userId = user?.id
   const today = new Date().toISOString().slice(0, 10)
 
   const { profiles } = useProfiles(userId)

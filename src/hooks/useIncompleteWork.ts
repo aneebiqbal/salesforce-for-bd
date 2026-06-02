@@ -13,7 +13,7 @@ import { useActivities } from '@/hooks/useActivities'
  */
 export function useIncompleteWork() {
   const { user } = useAuth()
-  const userId = user?.id ?? ''
+  const userId = user?.id
   const todayStr = new Date().toISOString().slice(0, 10)
   const developer = isDeveloper(user)
 
@@ -35,10 +35,10 @@ export function useIncompleteWork() {
     const filledProfileIds = new Set((todayActivities ?? []).map((a) => a.profile_id))
     const filledCount = filledProfileIds.size
     const allActivityDone =
-      isDeveloper || totalProfiles === 0 ||
+      developer || totalProfiles === 0 ||
       (filledCount === totalProfiles &&
         (todayActivities ?? []).every((a) => a.execution_completed))
-    const activityIncomplete = !isDeveloper && !allActivityDone && totalProfiles > 0
+    const activityIncomplete = !developer && !allActivityDone && totalProfiles > 0
 
     const incompleteCount = pendingTaskCount + (activityIncomplete ? 1 : 0)
 
@@ -52,5 +52,5 @@ export function useIncompleteWork() {
       allActivityDone,
       incompleteCount,
     }
-  }, [tasks, devTasks, isDeveloper, profiles, todayActivities, todayStr])
+  }, [tasks, devTasks, developer, profiles, todayActivities, todayStr])
 }
