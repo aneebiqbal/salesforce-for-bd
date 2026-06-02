@@ -529,7 +529,7 @@ export const DevTasksPage = () => {
 
   const handleCreateTask = async () => {
     const devToAssign = selectedDevId || effectiveDevId
-    if (!isManager || !devToAssign || !newTitle.trim()) {
+    if (!isManager || !userId || !devToAssign || !newTitle.trim()) {
       toast.error('Select a developer and enter a title')
       return
     }
