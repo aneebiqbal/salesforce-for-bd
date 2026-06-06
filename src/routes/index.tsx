@@ -6,7 +6,6 @@ import { ManagerRoute } from '@/routes/ManagerRoute'
 import { DevTasksRoute } from '@/routes/DevTasksRoute'
 import { BDRoute } from '@/routes/BDRoute'
 import { Login } from '@/pages/auth/Login'
-import { Register } from '@/pages/auth/Register'
 import { SetupPage } from '@/pages/setup/SetupPage'
 import { DashboardRedirect } from '@/pages/dashboard/DashboardRedirect'
 import { AdminDashboard } from '@/pages/dashboard/AdminDashboard'
@@ -32,7 +31,6 @@ const protectedLayout = (allowedRoles?: import('@/types').UserRole[]) => (
 
 export const router = createBrowserRouter([
   { path: '/login', element: <Login /> },
-  { path: '/register', element: <Register /> },
   { path: '/setup', element: <SetupPage /> },
   { path: '/dev-setup', element: <DevSetupPage /> },
   {

@@ -43,7 +43,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 export const BDDashboard = () => {
   const { user } = useAuth()
-  const userId = user?.id ?? ''
+  const userId = user?.id
   const todayStr = new Date().toISOString().slice(0, 10)
 
   const { profiles, isLoading: profilesLoading } = useProfiles(userId)

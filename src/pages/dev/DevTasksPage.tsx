@@ -462,7 +462,7 @@ function BoardColumn({
 
 export const DevTasksPage = () => {
   const { user } = useAuth()
-  const userId = user?.id ?? ''
+  const userId = user?.id
   const isDeveloper = isDevRole(user)
   const isManager = isManagerOrSuperAdmin(user)
 
@@ -529,7 +529,7 @@ export const DevTasksPage = () => {
 
   const handleCreateTask = async () => {
     const devToAssign = selectedDevId || effectiveDevId
-    if (!isManager || !devToAssign || !newTitle.trim()) {
+    if (!isManager || !userId || !devToAssign || !newTitle.trim()) {
       toast.error('Select a developer and enter a title')
       return
     }

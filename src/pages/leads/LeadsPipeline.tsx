@@ -33,6 +33,7 @@ import { LEAD_STATUSES } from '@/lib/constants'
 import { formatCurrency, cn } from '@/lib/utils'
 import type { Lead } from '@/types'
 import type { LeadStatus } from '@/types'
+import { createProjectFromWonLead } from '@/hooks/useLeadToProject'
 import { Trash2, Calendar, AlertCircle } from 'lucide-react'
 
 const STATUS_ORDER: LeadStatus[] = ['new', 'contacted', 'proposal', 'interview', 'negotiation', 'won', 'lost']
@@ -127,7 +128,7 @@ export const LeadsPipeline = () => {
     const assigneeId = values.assigned_to || null
     const previousAssignee = editingLead.assigned_to || null
     try {
-      await updateLead({
+      const updated = await updateLead({
         id: editingLead.id,
         payload: {
           client_name: values.client_name,
@@ -143,6 +144,9 @@ export const LeadsPipeline = () => {
           last_contacted_at: values.last_contacted_at || null,
         },
       })
+      if (values.status === 'won' && updated) {
+        await createProjectFromWonLead(updated, queryClient)
+      }
       if (canAssignLeads && assigneeId && assigneeId !== previousAssignee && assigneeId !== user?.id) {
         await createNotification({
           user_id: assigneeId,
@@ -205,8 +209,11 @@ export const LeadsPipeline = () => {
     setDraggedLead(null)
     if (!lead || lead.status === newStatus) return
     try {
-      await updateLead({ id: lead.id, payload: { status: newStatus } })
+      const updated = await updateLead({ id: lead.id, payload: { status: newStatus } })
       toast.success('Lead moved')
+      if (newStatus === 'won' && updated) {
+        await createProjectFromWonLead(updated, queryClient)
+      }
     } catch {
       queryClient.invalidateQueries({ queryKey: LEADS_QUERY_KEY })
       toast.error('Failed to move lead.')

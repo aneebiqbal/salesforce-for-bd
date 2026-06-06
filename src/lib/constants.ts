@@ -53,4 +53,4 @@ export const TARGET_METRICS: { value: string; label: string }[] = [
 ]
 
 /** Platform slugs - for forms when platform_id is selected from platforms table */
-export const PLATFORM_SLUGS = ['upwork', 'linkedin', 'cold_email'] as const
+export const PLATFORM_SLUGS = ['upwork', 'linkedin', 'cold_email', 'turing'] as const

@@ -16,7 +16,7 @@ export type TargetPeriod = 'weekly' | 'monthly'
 export type ProjectStatus = 'active' | 'completed' | 'on_hold' | 'cancelled'
 
 /** Platform slug - matches platforms.name in DB */
-export type PlatformSlug = 'upwork' | 'linkedin' | 'cold_email'
+export type PlatformSlug = 'upwork' | 'linkedin' | 'cold_email' | 'turing'
 
 /** user_profiles table */
 export interface UserProfile {
