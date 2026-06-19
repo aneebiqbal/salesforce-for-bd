@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/hooks/useAuth'
 
 export const ADMIN_STATS_QUERY_KEY = ['admin', 'stats']
 
@@ -11,6 +12,7 @@ export interface AdminStats {
 }
 
 export const useAdminStats = () => {
+  const { user } = useAuth()
   const { data, isLoading } = useQuery({
     queryKey: ADMIN_STATS_QUERY_KEY,
     queryFn: async (): Promise<AdminStats> => {
@@ -42,7 +44,7 @@ export const useAdminStats = () => {
         totalRevenue,
       }
     },
-    enabled: true,
+    enabled: !!user,
   })
 
   return { stats: data ?? null, isLoading }

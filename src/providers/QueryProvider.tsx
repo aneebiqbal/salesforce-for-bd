@@ -11,7 +11,9 @@ export const QueryProvider = ({ children }: { children: ReactNode }) => {
             staleTime: 60 * 1000,
             gcTime: 5 * 60 * 1000,
             refetchOnWindowFocus: false,
-            retry: 1,
+            refetchOnReconnect: true,
+            retry: 3,
+            retryDelay: attempt => Math.min(1000 * 2 ** attempt, 10000),
           },
           mutations: {
             retry: 0,

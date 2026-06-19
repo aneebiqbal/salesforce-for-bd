@@ -1,4 +1,5 @@
-import { createBrowserRouter, Navigate } from 'react-router'
+import { createBrowserRouter, Navigate, useRouteError, isRouteErrorResponse } from 'react-router'
+import { Button } from '@/components/ui/button'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { ProtectedRoute } from '@/routes/ProtectedRoute'
 import { SuperAdminRoute } from '@/routes/SuperAdminRoute'
@@ -23,6 +24,26 @@ import { ReportsPage } from '@/pages/reports/ReportsPage'
 import { SettingsPage } from '@/pages/settings/SettingsPage'
 import { DevSetupPage } from '@/pages/dev/DevSetupPage'
 
+const RouteErrorBoundary = () => {
+  const error = useRouteError()
+  const message = isRouteErrorResponse(error)
+    ? error.statusText
+    : error instanceof Error
+      ? error.message
+      : 'Something went wrong'
+
+  return (
+    <div className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-background p-4">
+      <h1 className="text-xl font-semibold">Something went wrong</h1>
+      <p className="max-w-md text-center text-sm text-muted-foreground">{message}</p>
+      <div className="flex gap-3">
+        <Button onClick={() => window.location.reload()}>Reload page</Button>
+        <Button variant="outline" onClick={() => window.history.back()}>Go back</Button>
+      </div>
+    </div>
+  )
+}
+
 const protectedLayout = (allowedRoles?: import('@/types').UserRole[]) => (
   <ProtectedRoute allowedRoles={allowedRoles}>
     <AppLayout />
@@ -36,6 +57,7 @@ export const router = createBrowserRouter([
   {
     path: '/',
     element: protectedLayout(),
+    errorElement: <RouteErrorBoundary />,
     children: [
       { index: true, element: <Navigate to="/dashboard" replace /> },
       {

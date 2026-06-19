@@ -78,7 +78,7 @@ function ProfileSection() {
               />
             ) : (
               <div className="flex size-14 items-center justify-center rounded-full bg-primary text-xl font-semibold text-primary-foreground">
-                {(user?.full_name ?? 'U')[0].toUpperCase()}
+                {(user?.full_name || 'U')[0].toUpperCase()}
               </div>
             )}
             <div>

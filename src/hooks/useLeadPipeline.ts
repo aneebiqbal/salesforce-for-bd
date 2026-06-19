@@ -1,11 +1,13 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/hooks/useAuth'
 
 export const LEAD_PIPELINE_QUERY_KEY = ['admin', 'lead-pipeline']
 
 const STATUS_ORDER = ['new', 'contacted', 'proposal', 'interview', 'negotiation', 'won', 'lost'] as const
 
 export const useLeadPipeline = () => {
+  const { user } = useAuth()
   const { data = [], isLoading } = useQuery({
     queryKey: LEAD_PIPELINE_QUERY_KEY,
     queryFn: async (): Promise<{ stage: string; count: number }[]> => {
@@ -23,7 +25,7 @@ export const useLeadPipeline = () => {
         count: counts[stage] ?? 0,
       }))
     },
-    enabled: true,
+    enabled: !!user,
   })
 
   return { data, isLoading }

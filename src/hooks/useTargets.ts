@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/hooks/useAuth'
 import type { Target } from '@/types'
 
 export const TARGETS_QUERY_KEY = ['targets']
@@ -8,6 +9,7 @@ export type TargetInsert = Omit<Target, 'id' | 'created_at'>
 export type TargetUpdate = Partial<TargetInsert> & { id: string }
 
 export const useTargets = (bdMemberId?: string) => {
+  const { user } = useAuth()
   const queryClient = useQueryClient()
 
   const { data: targets = [], isLoading } = useQuery({
@@ -22,7 +24,7 @@ export const useTargets = (bdMemberId?: string) => {
       if (error) throw error
       return (data ?? []) as Target[]
     },
-    enabled: true,
+    enabled: !!user,
     staleTime: 2 * 60 * 1000,
   })
 

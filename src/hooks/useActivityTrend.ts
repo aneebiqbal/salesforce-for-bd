@@ -1,9 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/hooks/useAuth'
 
 export const ACTIVITY_TREND_QUERY_KEY = ['admin', 'activity-trend']
 
 export const useActivityTrend = (days = 7) => {
+  const { user } = useAuth()
   const end = new Date()
   const start = new Date()
   start.setDate(start.getDate() - days)
@@ -34,7 +36,7 @@ export const useActivityTrend = (days = 7) => {
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([date, value]) => ({ date, value }))
     },
-    enabled: true,
+    enabled: !!user,
   })
 
   return { data, isLoading }

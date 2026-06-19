@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/hooks/useAuth'
 import type { Lead } from '@/types'
 
 export const LEADS_QUERY_KEY = ['leads']
@@ -7,6 +8,7 @@ export const LEADS_QUERY_KEY = ['leads']
 export type LeadInsert = Omit<Lead, 'id' | 'created_at' | 'updated_at'>
 
 export const useLeads = (assignedTo?: string) => {
+  const { user } = useAuth()
   const queryClient = useQueryClient()
 
   const { data: leads = [], isLoading } = useQuery({
@@ -21,7 +23,7 @@ export const useLeads = (assignedTo?: string) => {
       if (error) throw error
       return (data ?? []) as Lead[]
     },
-    enabled: true,
+    enabled: !!user,
     staleTime: 2 * 60 * 1000,
   })
 
