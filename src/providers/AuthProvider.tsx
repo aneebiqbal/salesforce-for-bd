@@ -91,8 +91,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     init()
 
-    const timeout = window.setTimeout(setDone, 5000)
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, s) => {
       if (!mounted) return
       try {
@@ -129,7 +127,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     return () => {
       mounted = false
-      window.clearTimeout(timeout)
       window.clearInterval(refreshInterval)
       subscription.unsubscribe()
     }
@@ -154,7 +151,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [refreshUser])
 
   const signOut = useCallback(async () => {
-    await supabase.auth.signOut()
+    try {
+      // Use 'local' scope — skips the network call to POST /logout and simply
+      // clears the session from storage + fires SIGNED_OUT.  The default
+      // 'global' scope makes a POST that can fail (network error, rate limit)
+      // and when it does the auth-js SDK leaves the session intact.
+      await supabase.auth.signOut({ scope: 'local' })
+    } catch {
+      // swallow — local-scope signOut is best-effort
+    }
     setSession(null)
     setUser(null)
     setSessionExpiredOrSignedOut(true)

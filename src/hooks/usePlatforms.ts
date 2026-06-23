@@ -1,10 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/hooks/useAuth'
 import type { Platform } from '@/types'
 
 export const PLATFORMS_QUERY_KEY = ['platforms']
 
 export const usePlatforms = () => {
+  const { user } = useAuth()
   const { data: platforms = [], isLoading } = useQuery({
     queryKey: PLATFORMS_QUERY_KEY,
     queryFn: async (): Promise<Platform[]> => {
@@ -16,7 +18,7 @@ export const usePlatforms = () => {
       if (error) throw error
       return (data ?? []) as Platform[]
     },
-    enabled: true,
+    enabled: !!user,
     staleTime: 5 * 60 * 1000,
   })
   return { platforms, isLoading }

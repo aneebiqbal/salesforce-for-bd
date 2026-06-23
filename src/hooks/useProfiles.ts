@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/hooks/useAuth'
 import type { Profile, ProfileWithPlatform } from '@/types'
 
 export const PROFILES_QUERY_KEY = ['profiles']
@@ -8,6 +9,7 @@ export type ProfileInsert = Omit<Profile, 'id' | 'created_at' | 'updated_at'>
 
 /** Scope: undefined = all (super_admin only); string = single bd_member_id; string[] = only these bd_member_ids (e.g. manager's team). */
 export const useProfiles = (scope?: string | string[]) => {
+  const { user } = useAuth()
   const queryClient = useQueryClient()
 
   const { data: profiles = [], isLoading } = useQuery({
@@ -23,7 +25,7 @@ export const useProfiles = (scope?: string | string[]) => {
       if (error) throw error
       return (data ?? []) as ProfileWithPlatform[]
     },
-    enabled: true,
+    enabled: !!user,
     staleTime: 5 * 60 * 1000,
   })
 

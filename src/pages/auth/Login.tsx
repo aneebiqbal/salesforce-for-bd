@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Link, useNavigate } from 'react-router'
+import { useState, useRef } from 'react'
+import { Navigate, useNavigate } from 'react-router'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -23,6 +23,7 @@ export const Login = () => {
   const { session, loading: authLoading, signIn } = useAuthContext()
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const loggingInRef = useRef(false)
 
   const form = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
@@ -32,11 +33,13 @@ export const Login = () => {
   const onSubmit = async (data: LoginForm) => {
     setError(null)
     setSubmitting(true)
+    loggingInRef.current = true
     try {
       await signIn(data.email, data.password)
       toast.success('Signed in')
       navigate('/dashboard', { replace: true })
     } catch (err) {
+      loggingInRef.current = false
       const msg = err instanceof Error ? err.message : 'Sign in failed'
       setError(msg)
       toast.error(msg)
@@ -52,18 +55,8 @@ export const Login = () => {
     )
   }
 
-  if (session) {
-    return (
-      <div className="flex min-h-dvh items-center justify-center bg-background p-4">
-        <div className="rounded-xl border bg-card p-8 text-center shadow-sm">
-          <p className="font-medium text-foreground">You’re already signed in.</p>
-          <p className="mt-1 text-sm text-muted-foreground">Continue to your dashboard.</p>
-          <Button asChild className="mt-6">
-            <Link to="/dashboard">Go to dashboard</Link>
-          </Button>
-        </div>
-      </div>
-    )
+  if (session && !loggingInRef.current) {
+    return <Navigate to="/dashboard" replace />
   }
 
   return (

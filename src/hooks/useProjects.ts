@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/hooks/useAuth'
 import type { Project } from '@/types'
 
 export const PROJECTS_QUERY_KEY = ['projects']
@@ -8,6 +9,7 @@ export type ProjectInsert = Omit<Project, 'id' | 'created_at' | 'updated_at'>
 export type ProjectUpdate = Partial<ProjectInsert> & { id: string }
 
 export const useProjects = (leadId?: string | null) => {
+  const { user } = useAuth()
   const queryClient = useQueryClient()
 
   const { data: projects = [], isLoading } = useQuery({
@@ -22,7 +24,7 @@ export const useProjects = (leadId?: string | null) => {
       if (error) throw error
       return (data ?? []) as Project[]
     },
-    enabled: true,
+    enabled: !!user,
     staleTime: 2 * 60 * 1000,
   })
 

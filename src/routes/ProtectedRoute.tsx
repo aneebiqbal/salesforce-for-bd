@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { useAuth } from '@/hooks/useAuth'
-import { Link } from 'react-router'
+import { Navigate, Link } from 'react-router'
 import { Button } from '@/components/ui/button'
 
 interface ProtectedRouteProps {
@@ -14,7 +14,7 @@ interface ProtectedRouteProps {
 const PROFILE_GRACE_MS = 4000
 
 export const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
-  const { user, session, loading, sessionExpiredOrSignedOut, refreshProfile } = useAuth()
+  const { user, session, loading, refreshProfile } = useAuth()
   const [retrying, setRetrying] = React.useState(false)
   const [showProfileError, setShowProfileError] = React.useState(false)
 
@@ -72,18 +72,7 @@ export const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) 
   }
 
   if (!session || !user) {
-    return (
-      <div className="flex min-h-dvh items-center justify-center bg-background p-4">
-        <div className="text-center space-y-4 max-w-sm">
-          <p className="text-muted-foreground">
-            {sessionExpiredOrSignedOut ? 'Session expired. Please log in again.' : 'Please log in to continue.'}
-          </p>
-          <Button asChild>
-            <Link to="/login">Go to login</Link>
-          </Button>
-        </div>
-      </div>
-    )
+    return <Navigate to="/login" replace />
   }
 
   if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {

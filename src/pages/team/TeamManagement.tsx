@@ -1,9 +1,17 @@
 import { useState, useMemo } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog'
 import {
   Select,
   SelectContent,
@@ -12,10 +20,12 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
 import { useAuth } from '@/hooks/useAuth'
-import { useTeamMembers, useUpdateMemberRole, useToggleMemberActive, useUpdateMemberManager } from '@/hooks/useTeam'
+import { useTeamMembers, useUpdateMemberRole, useToggleMemberActive, useUpdateMemberManager, TEAM_QUERY_KEY } from '@/hooks/useTeam'
 import { useActivities } from '@/hooks/useActivities'
 import { useProfiles } from '@/hooks/useProfiles'
+import { supabase } from '@/lib/supabase'
 import type { UserRole } from '@/types'
 import { isSuperAdmin, isBdManager } from '@/lib/roles'
 import { cn } from '@/lib/utils'
@@ -31,6 +41,7 @@ function initials(name: string): string {
 
 export const TeamManagement = () => {
   const { user: currentUser } = useAuth()
+  const queryClient = useQueryClient()
   const { members, allMembers, isLoading } = useTeamMembers()
   const { profiles } = useProfiles(undefined)
   const { updateMemberRole, isUpdating } = useUpdateMemberRole()
@@ -39,6 +50,86 @@ export const TeamManagement = () => {
   const [changingRoleId, setChangingRoleId] = useState<string | null>(null)
   const [togglingId, setTogglingId] = useState<string | null>(null)
   const [changingManagerId, setChangingManagerId] = useState<string | null>(null)
+  const [addUserOpen, setAddUserOpen] = useState(false)
+  const [addName, setAddName] = useState('')
+  const [addEmail, setAddEmail] = useState('')
+  const [addPassword, setAddPassword] = useState('')
+  const [addRole, setAddRole] = useState<UserRole>('bd')
+  const [addUserSaving, setAddUserSaving] = useState(false)
+
+  const handleAddUser = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!addName.trim() || !addEmail.trim() || !addPassword.trim()) {
+      toast.error('Name, email, and password are required')
+      return
+    }
+    setAddUserSaving(true)
+    try {
+      // Save admin token before any auth operations
+      const { data: { session: adminSession } } = await supabase.auth.getSession()
+      const adminToken = adminSession?.access_token
+      const baseUrl = (import.meta.env.VITE_SUPABASE_URL ?? '').replace(/\/$/, '')
+      const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY ?? ''
+
+      // Use raw REST API to create the user WITHOUT changing the Supabase client
+      // session.  This prevents the unwanted redirect that happens when
+      // supabase.auth.signUp() swaps the client session to the new user
+      // (which occurs when auto-confirm is disabled).
+      const signUpRes = await fetch(`${baseUrl}/auth/v1/signup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: anonKey },
+        body: JSON.stringify({
+          email: addEmail.trim(),
+          password: addPassword,
+          data: { full_name: addName.trim() },
+        }),
+      })
+      const signUpBody = await signUpRes.json()
+      if (!signUpRes.ok) {
+        const msg = signUpBody.error_description || signUpBody.msg || signUpBody.error || `Signup failed (${signUpRes.status})`
+        throw new Error(msg)
+      }
+      const userId: string | undefined = signUpBody.id || signUpBody.user?.id
+      if (!userId) throw new Error('User creation returned no ID')
+
+      // Upsert profile using admin's raw JWT (bypasses client session)
+      const upsertRes = await fetch(`${baseUrl}/rest/v1/user_profiles`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${adminToken}`,
+          apikey: anonKey,
+          Prefer: 'resolution=merge-duplicates',
+        },
+        body: JSON.stringify({
+          id: userId,
+          email: addEmail.trim(),
+          full_name: addName.trim(),
+          role: addRole,
+          is_active: true,
+          updated_at: new Date().toISOString(),
+        }),
+      })
+      if (!upsertRes.ok) {
+        const body = await upsertRes.text().catch(() => '')
+        throw new Error(`Profile upsert failed (${upsertRes.status}): ${body}`)
+      }
+
+      queryClient.invalidateQueries({ queryKey: TEAM_QUERY_KEY })
+      toast.success('User created successfully')
+      setAddUserOpen(false)
+      setAddName('')
+      setAddEmail('')
+      setAddPassword('')
+      setAddRole('bd')
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to create user'
+      toast.error(message)
+      console.error('[AddUser]', err)
+    } finally {
+      setAddUserSaving(false)
+    }
+  }
 
   const profileCountByMember = useMemo(() => {
     const map = new Map<string, number>()
@@ -132,9 +223,14 @@ export const TeamManagement = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Team</h1>
-        <p className="text-muted-foreground">Manage team members, roles, and access.</p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Team</h1>
+          <p className="text-muted-foreground">Manage team members, roles, and access.</p>
+        </div>
+        {_isSuperAdmin && (
+          <Button onClick={() => setAddUserOpen(true)}>Add User</Button>
+        )}
       </div>
 
       <Card>
@@ -261,6 +357,44 @@ export const TeamManagement = () => {
           })}
         </div>
       )}
+
+      {/* Add User Dialog — Super Admin only */}
+      <Dialog open={addUserOpen} onOpenChange={setAddUserOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Create User</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleAddUser} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="add-name">Full name</Label>
+              <Input id="add-name" value={addName} onChange={(e) => setAddName(e.target.value)} placeholder="Jane Doe" required autoFocus />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="add-email">Email</Label>
+              <Input id="add-email" type="email" value={addEmail} onChange={(e) => setAddEmail(e.target.value)} placeholder="jane@company.com" required />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="add-password">Password</Label>
+              <Input id="add-password" type="password" value={addPassword} onChange={(e) => setAddPassword(e.target.value)} placeholder="At least 8 characters" required minLength={8} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="add-role">Role</Label>
+              <Select value={addRole} onValueChange={(v) => setAddRole(v as UserRole)}>
+                <SelectTrigger id="add-role"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="bd">BD</SelectItem>
+                  <SelectItem value="bd_manager">BD Manager</SelectItem>
+                  <SelectItem value="developer">Developer</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <DialogFooter className="gap-2">
+              <Button type="button" variant="outline" onClick={() => setAddUserOpen(false)} disabled={addUserSaving}>Cancel</Button>
+              <Button type="submit" disabled={addUserSaving}>{addUserSaving ? 'Creating…' : 'Create User'}</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/hooks/useAuth'
 
 export const ACTIVITY_LOG_QUERY_KEY = ['activity-log']
 
@@ -27,6 +28,7 @@ export const useActivityLog = (
     page?: number
   } = {}
 ) => {
+  const { user } = useAuth()
   const { bdMemberId, startDate, endDate, platformId, page = 1 } = options
   const from = (page - 1) * PAGE_SIZE
   const to = from + PAGE_SIZE - 1
@@ -80,7 +82,7 @@ export const useActivityLog = (
 
       return { rows, total: count ?? 0 }
     },
-    enabled: true,
+    enabled: !!user,
   })
 
   return {

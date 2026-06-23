@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/hooks/useAuth'
 import type { DailyActivity } from '@/types'
 
 export const ACTIVITIES_QUERY_KEY = ['activities']
@@ -36,6 +37,7 @@ export type DailyActivityInsert = Omit<DailyActivity, 'id' | 'total_actions' | '
 
 /** Scope: undefined = all (super_admin only); string = single bd_member_id; string[] = only these bd_member_ids (e.g. manager's team). */
 export const useActivities = (scope?: string | string[], start?: string, end?: string) => {
+  const { user } = useAuth()
   const queryClient = useQueryClient()
 
   const { data: activities = [], isLoading } = useQuery({
@@ -53,7 +55,7 @@ export const useActivities = (scope?: string | string[], start?: string, end?: s
       if (error) throw error
       return (data ?? []) as DailyActivity[]
     },
-    enabled: true,
+    enabled: !!user,
     staleTime: 60 * 1000,
     refetchOnWindowFocus: false,
   })

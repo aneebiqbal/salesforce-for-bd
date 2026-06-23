@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/hooks/useAuth'
 import type { DevTask, DevTaskStatus } from '@/types'
 
 export const DEV_TASKS_PAGE_SIZE = 150
@@ -10,6 +11,7 @@ export type DevTaskUpdate = Partial<Omit<DevTask, 'id' | 'created_at' | 'updated
 export const DEV_TASKS_QUERY_KEY = ['dev_tasks']
 
 export const useDevTasks = (devId?: string) => {
+  const { user } = useAuth()
   const queryClient = useQueryClient()
 
   const { data: tasks = [], isLoading } = useQuery({
@@ -26,7 +28,7 @@ export const useDevTasks = (devId?: string) => {
       if (error) throw error
       return (data ?? []) as DevTask[]
     },
-    enabled: true,
+    enabled: !!user,
     staleTime: 60 * 1000,
   })
 

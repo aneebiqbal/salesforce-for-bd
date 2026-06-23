@@ -1,10 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/hooks/useAuth'
 import type { UserProfile } from '@/types'
 
 export const USER_PROFILES_QUERY_KEY = ['user-profiles']
 
 export const useUserProfiles = (role?: 'super_admin' | 'bd_manager' | 'bd') => {
+  const { user } = useAuth()
   const { data: users = [], isLoading } = useQuery({
     queryKey: [...USER_PROFILES_QUERY_KEY, role],
     queryFn: async (): Promise<UserProfile[]> => {
@@ -14,7 +16,7 @@ export const useUserProfiles = (role?: 'super_admin' | 'bd_manager' | 'bd') => {
       if (error) throw error
       return (data ?? []) as UserProfile[]
     },
-    enabled: true,
+    enabled: !!user,
   })
   return { users, isLoading }
 }

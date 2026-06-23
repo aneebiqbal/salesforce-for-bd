@@ -272,62 +272,64 @@ export const LeadsPipeline = () => {
           ))}
         </div>
       ) : (
-        <div className="flex gap-3 overflow-x-auto pb-4">
-          {STATUS_ORDER.map((status) => {
-            const columnLeads = leadsByStatus.get(status) ?? []
-            const overdueInCol = columnLeads.filter(
-              (l) => l.follow_up_date && l.follow_up_date < today
-            ).length
-            return (
-              <div
-                key={status}
-                className={cn(
-                  'flex h-full min-h-[420px] w-72 shrink-0 flex-col rounded-xl border bg-muted/30 transition-colors',
-                  dragOverStatus === status && 'border-primary bg-muted/50',
-                  status === 'won' && 'border-green-300/50 bg-green-50/20 dark:bg-green-950/10',
-                  status === 'lost' && 'border-red-200/50',
-                )}
-                onDragOver={(e) => handleDragOver(e, status)}
-                onDragLeave={handleDragLeave}
-                onDrop={(e) => handleDrop(e, status)}
-              >
-                {/* Column header */}
-                <div className="flex items-center justify-between border-b px-3 py-2.5">
-                  <span className="text-sm font-semibold">{STATUS_LABEL_MAP[status]}</span>
-                  <div className="flex items-center gap-1.5">
-                    {overdueInCol > 0 && (
-                      <Badge variant="destructive" className="text-xs px-1.5 py-0 h-4">
-                        {overdueInCol} late
-                      </Badge>
+        <div className="overflow-x-auto">
+          <div className="flex gap-3 pb-4">
+            {STATUS_ORDER.map((status) => {
+              const columnLeads = leadsByStatus.get(status) ?? []
+              const overdueInCol = columnLeads.filter(
+                (l) => l.follow_up_date && l.follow_up_date < today
+              ).length
+              return (
+                <div
+                  key={status}
+                  className={cn(
+                    'flex min-h-[420px] w-72 shrink-0 flex-col rounded-xl border bg-muted/30 transition-colors max-h-[calc(100vh-200px)]',
+                    dragOverStatus === status && 'border-primary bg-muted/50',
+                    status === 'won' && 'border-green-300/50 bg-green-50/20 dark:bg-green-950/10',
+                    status === 'lost' && 'border-red-200/50',
+                  )}
+                  onDragOver={(e) => handleDragOver(e, status)}
+                  onDragLeave={handleDragLeave}
+                  onDrop={(e) => handleDrop(e, status)}
+                >
+                  {/* Column header */}
+                  <div className="flex items-center justify-between border-b px-3 py-2.5 shrink-0">
+                    <span className="text-sm font-semibold">{STATUS_LABEL_MAP[status]}</span>
+                    <div className="flex items-center gap-1.5">
+                      {overdueInCol > 0 && (
+                        <Badge variant="destructive" className="text-xs px-1.5 py-0 h-4">
+                          {overdueInCol} late
+                        </Badge>
+                      )}
+                      <Badge variant="secondary" className="text-xs">{columnLeads.length}</Badge>
+                    </div>
+                  </div>
+
+                  {/* Cards */}
+                  <div className="flex flex-1 flex-col gap-2 overflow-y-auto p-2 min-h-0">
+                    {columnLeads.length === 0 ? (
+                      <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed border-muted-foreground/20 p-4 text-center text-xs text-muted-foreground">
+                        Drop leads here
+                      </div>
+                    ) : (
+                      columnLeads.map((lead) => (
+                        <LeadCard
+                          key={lead.id}
+                          lead={lead}
+                          today={today}
+                          assignedName={assignedName(lead.assigned_to)}
+                          onDragStart={(e) => handleDragStart(e, lead)}
+                          onClick={() => setEditingLead(lead)}
+                          onMarkContacted={(e) => handleMarkContacted(lead, e)}
+                          isDragging={draggedLead?.id === lead.id}
+                        />
+                      ))
                     )}
-                    <Badge variant="secondary" className="text-xs">{columnLeads.length}</Badge>
                   </div>
                 </div>
-
-                {/* Cards */}
-                <div className="flex min-h-[350px] flex-1 flex-col gap-2 overflow-y-auto p-2">
-                  {columnLeads.length === 0 ? (
-                    <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed border-muted-foreground/20 p-4 text-center text-xs text-muted-foreground">
-                      Drop leads here
-                    </div>
-                  ) : (
-                    columnLeads.map((lead) => (
-                      <LeadCard
-                        key={lead.id}
-                        lead={lead}
-                        today={today}
-                        assignedName={assignedName(lead.assigned_to)}
-                        onDragStart={(e) => handleDragStart(e, lead)}
-                        onClick={() => setEditingLead(lead)}
-                        onMarkContacted={(e) => handleMarkContacted(lead, e)}
-                        isDragging={draggedLead?.id === lead.id}
-                      />
-                    ))
-                  )}
-                </div>
-              </div>
-            )
-          })}
+              )
+            })}
+          </div>
         </div>
       )}
 

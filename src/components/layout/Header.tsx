@@ -22,7 +22,11 @@ export const Header = () => {
   const navigate = useNavigate()
 
   const handleSignOut = async () => {
-    await signOut()
+    try {
+      await signOut()
+    } catch {
+      // signOut already swallows errors; this is a safety net
+    }
     queryClient.clear()
     navigate('/login', { replace: true })
   }

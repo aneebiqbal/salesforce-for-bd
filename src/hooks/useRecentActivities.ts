@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/hooks/useAuth'
 
 export const RECENT_ACTIVITIES_QUERY_KEY = ['admin', 'recent-activities']
 
@@ -15,6 +16,7 @@ export interface RecentActivityRow {
 }
 
 export const useRecentActivities = (limit = 10) => {
+  const { user } = useAuth()
   const { data = [], isLoading } = useQuery({
     queryKey: [...RECENT_ACTIVITIES_QUERY_KEY, limit],
     queryFn: async (): Promise<RecentActivityRow[]> => {
@@ -68,7 +70,7 @@ export const useRecentActivities = (limit = 10) => {
         profile_name: (r as { profile_name?: string }).profile_name ?? '—',
       }))
     },
-    enabled: true,
+    enabled: !!user,
   })
 
   return { data, isLoading }
