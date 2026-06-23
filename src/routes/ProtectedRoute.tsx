@@ -14,7 +14,7 @@ interface ProtectedRouteProps {
 const PROFILE_GRACE_MS = 4000
 
 export const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
-  const { user, session, loading, sessionExpiredOrSignedOut, refreshProfile } = useAuth()
+  const { user, session, loading, refreshProfile } = useAuth()
   const [retrying, setRetrying] = React.useState(false)
   const [showProfileError, setShowProfileError] = React.useState(false)
 
